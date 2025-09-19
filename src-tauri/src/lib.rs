@@ -121,6 +121,14 @@ async fn get_file_context() -> Result<Vec<String>, String> {
         .map_err(|e| format!("Failed to get file context: {}", e))
 }
 
+#[tauri::command]
+async fn wipe_uploaded_files() -> Result<(), String> {
+  let storage = file_storage::FileStorage::new()
+    .map_err(|e| format!("Failed to initialize file storage: {}", e))?;
+  storage.wipe_all()
+    .map_err(|e| format!("Failed to wipe uploaded files: {}", e))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
@@ -139,7 +147,8 @@ pub fn run() {
             list_uploaded_files,
             delete_uploaded_file,
             toggle_file_context,
-            get_file_context
+            get_file_context,
+            wipe_uploaded_files,
         ])
         .setup(|app| {
             // Make a shared place to store the sidecar child

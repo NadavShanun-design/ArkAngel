@@ -7,13 +7,13 @@ import { cn } from "@/lib/utils";
 
 function Popover({
   ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Root>) {
+}: Readonly<React.ComponentProps<typeof PopoverPrimitive.Root>>) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />;
 }
 
 function PopoverTrigger({
   ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
+}: Readonly<React.ComponentProps<typeof PopoverPrimitive.Trigger>>) {
   return (
     <PopoverPrimitive.Trigger
       data-slot="popover-trigger"
@@ -30,8 +30,25 @@ function PopoverContent({
   className,
   align = "center",
   sideOffset = 4,
+  onMouseMove,
+  onMouseLeave,
   ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+}: Readonly<React.ComponentProps<typeof PopoverPrimitive.Content>>) {
+  const handleMouseMove = (e: any) => {
+    const el = e.currentTarget as HTMLElement;
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    el.style.setProperty("--spot-x", `${x}px`);
+    el.style.setProperty("--spot-y", `${y}px`);
+  };
+
+  const handleMouseLeave = (e: any) => {
+    const el = e.currentTarget as HTMLElement;
+    el.style.removeProperty("--spot-x");
+    el.style.removeProperty("--spot-y");
+  };
+
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
@@ -39,9 +56,11 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "mt-1 shadow-none bg-popover/95 text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-xl border p-4 outline-hidden",
+          "mt-1 shadow-none bg-popover/95 text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-xl border p-4 outline-hidden aa-spotlight relative overflow-hidden",
           className
         )}
+  onMouseMove={(e: any) => { handleMouseMove(e); onMouseMove?.(e); }}
+  onMouseLeave={(e: any) => { handleMouseLeave(e); onMouseLeave?.(e); }}
         {...props}
       />
     </PopoverPrimitive.Portal>
@@ -50,7 +69,7 @@ function PopoverContent({
 
 function PopoverAnchor({
   ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Anchor>) {
+}: Readonly<React.ComponentProps<typeof PopoverPrimitive.Anchor>>) {
   return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />;
 }
 

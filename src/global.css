@@ -43,6 +43,11 @@
 
 :root {
   --radius: 0.625rem;
+  /* Spotlight color vars (fallback to rgba for broad engine support) */
+  --aa-spot-color: rgba(0, 0, 0, 0.45);
+  --aa-spot-color-2: rgba(0, 0, 0, 0.24);
+  /* Global spotlight ring thickness */
+  --aa-spot-border-width: 2px;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -108,6 +113,9 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  /* Dark mode spotlight colors (white ring) */
+  --aa-spot-color: rgba(255, 255, 255, 0.60);
+  --aa-spot-color-2: rgba(255, 255, 255, 0.32);
 }
 
 @layer base {
@@ -132,7 +140,7 @@
 
 .tool-activity {
   position: relative;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
 }
 
 .tool-activity.loading {
@@ -147,6 +155,7 @@
   border-radius: inherit;
   background: conic-gradient(from var(--aa-angle), rgba(255,255,255,0.85), rgba(255,255,255,0.25), rgba(255,255,255,0.85));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   animation: aa-rotate 1.2s linear infinite;
@@ -166,7 +175,44 @@
 /* Local 2-line clamp utility for summaries */
 .aa-line-clamp-2 {
   display: -webkit-box;
+  line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Cursor-following spotlight for buttons */
+.aa-spotlight {
+  position: relative;
+}
+.aa-spotlight > * { position: relative; z-index: 1; }
+.aa-spotlight::before {
+  content: "";
+  position: absolute;
+  /* Extend slightly outside to be visible on dark borders */
+  inset: -2px;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+  /* Show only the border ring area using masks */
+  /* Increase inner padding so only a ring remains while outer extends 2px */
+  padding: calc(var(--aa-spot-border-width) + 2px);
+  background: radial-gradient(
+    360px 360px at var(--spot-x, 50%) var(--spot-y, 50%),
+    var(--aa-spot-color),
+    var(--aa-spot-color-2) 55%,
+    transparent 88%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  filter: blur(1px);
+  will-change: background, opacity;
+  opacity: 0;
+  transition: opacity 150ms ease, background 80ms linear;
+}
+.aa-spotlight:hover::before,
+.aa-spotlight:focus-visible::before {
+  opacity: 1;
 }

@@ -66,6 +66,14 @@ export const saveChatHistory = (conversations: ChatConversation[]) => {
   }
 };
 
+export const clearChatHistory = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.CHAT_HISTORY);
+  } catch (error) {
+    console.error("Failed to clear chat history from localStorage:", error);
+  }
+};
+
 // Export conversation to JSON file in memory folder
 const exportConversationToFile = async (conversation: ChatConversation) => {
   try {

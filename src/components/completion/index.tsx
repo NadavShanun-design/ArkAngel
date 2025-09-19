@@ -201,7 +201,6 @@ export const Completion = () => {
                   <div className="absolute select-none right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     <MessageHistory
                       conversationHistory={conversationHistory}
-                      currentConversationId={currentConversationId}
                       onStartNewConversation={startNewConversation}
                       messageHistoryOpen={messageHistoryOpen}
                       setMessageHistoryOpen={setMessageHistoryOpen}

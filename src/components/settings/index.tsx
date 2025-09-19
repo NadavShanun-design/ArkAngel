@@ -1,20 +1,15 @@
 import { useState, useEffect } from "react";
 import { useWindowResize } from "@/hooks";
 import { SettingsIcon } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Button,
-  ScrollArea,
-} from "@/components";
+import { Popover, PopoverContent, PopoverTrigger, Button, ScrollArea, SpotlightArea } from "@/components";
 import { ProviderSelection } from "./ProviderSelection";
 import { ApiKeyInput } from "./ApiKeyInput";
 import { ModelSelection } from "./ModelSelection";
 import { Disclaimer } from "./Disclaimer";
 import { SystemPrompt } from "./SystemPrompt";
 import { Speech } from "./Speech";
-import { FileUploadSettings } from "./FileUploadSettings";
+import { ManageDataDialog } from "./ManageDataDialog";
+import { ThemeToggle } from "./ThemeToggle";
 import {
   loadSettingsFromStorage,
   saveSettingsToStorage,
@@ -23,29 +18,30 @@ import {
 } from "@/lib";
 import { SettingsState } from "@/types";
 import { invoke } from "@tauri-apps/api/core";
-export const Settings = () => {
+interface SettingsProps {
+  onOpenIntegrations?: () => void;
+}
+
+export const Settings: React.FC<SettingsProps> = ({ onOpenIntegrations }) => {
   const [settings, setSettings] = useState<SettingsState>(
     loadSettingsFromStorage
   );
   const { resizeWindow } = useWindowResize();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-  const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
-  const [googleConnectMessage, setGoogleConnectMessage] = useState<string | null>(null);
-  const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(false);
 
   // Save to localStorage whenever settings change
   useEffect(() => {
     saveSettingsToStorage(settings);
   }, [settings]);
 
-  // Check Google connection on mount/open
+  // Check for updates
   useEffect(() => {
     const check = async () => {
       try {
         console.log('[Settings][Google] Checking connection status...')
         const connected = await invoke<boolean>("is_google_connected");
         console.log('[Settings][Google] Status response:', connected)
-        setIsGoogleConnected(Boolean(connected));
+        // Note: Google connection status is now handled in the Integrations component
       } catch (err) {
         console.error('[Settings][Google] Failed to check connection status:', err)
       }
@@ -150,62 +146,6 @@ export const Settings = () => {
     resizeWindow(isPopoverOpen);
   }, [isPopoverOpen, resizeWindow]);
 
-  // Auto-close on focus loss disabled to prevent interruptions during form interactions
-  // Settings should be closed manually via the toggle button for better UX
-  // useWindowFocus({
-  //   onFocusLost: () => {
-  //     setIsPopoverOpen(false);
-  //   },
-  // });
-
-  const handleConnectGoogle = async () => {
-    try {
-      console.log('[Settings][Google] Starting connect flow...')
-      setIsConnectingGoogle(true);
-      setGoogleConnectMessage(null);
-      const result = await invoke<string>("connect_google_suite");
-      console.log('[Settings][Google] Connect result:', result)
-      setGoogleConnectMessage(result);
-      setIsGoogleConnected(true);
-    } catch (e: any) {
-      console.error('[Settings][Google] Connect error:', e)
-      setGoogleConnectMessage(e?.toString?.() || "Failed to connect Google Suite");
-      setIsGoogleConnected(false);
-    } finally {
-      setIsConnectingGoogle(false);
-      try {
-        const connected = await invoke<boolean>("is_google_connected");
-        console.log('[Settings][Google] Post-connect status:', connected)
-        setIsGoogleConnected(Boolean(connected));
-      } catch (err) {
-        console.error('[Settings][Google] Failed to re-check connection status:', err)
-      }
-    }
-  };
-
-  const handleDisconnectGoogle = async () => {
-    try {
-      console.log('[Settings][Google] Starting disconnect flow...')
-      setIsConnectingGoogle(true);
-      const result = await invoke<string>("disconnect_google_suite");
-      console.log('[Settings][Google] Disconnect result:', result)
-      setGoogleConnectMessage(result);
-      setIsGoogleConnected(false);
-    } catch (e: any) {
-      console.error('[Settings][Google] Disconnect error:', e)
-      setGoogleConnectMessage(e?.toString?.() || "Failed to disconnect");
-    } finally {
-      setIsConnectingGoogle(false);
-      try {
-        const connected = await invoke<boolean>("is_google_connected");
-        console.log('[Settings][Google] Post-disconnect status:', connected)
-        setIsGoogleConnected(Boolean(connected));
-      } catch (err) {
-        console.error('[Settings][Google] Failed to re-check connection status:', err)
-      }
-    }
-  };
-
   return (
     <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
       <PopoverTrigger asChild>
@@ -213,6 +153,7 @@ export const Settings = () => {
           size="icon"
           aria-label="Open Settings"
           className="cursor-pointer [data-state=open]:bg-[red]"
+          spotlight
           title="Open Settings"
         >
           <SettingsIcon className="h-4 w-4" />
@@ -239,27 +180,26 @@ export const Settings = () => {
               </p>
             </div>
 
-            {/* Google Suite Connect */}
-            <div className="flex items-center justify-between gap-2 p-3 rounded-md border border-input/50 bg-background/50">
+            {/* Integrations */}
+            <SpotlightArea className="flex items-center justify-between gap-2 p-3 rounded-md border border-input/50 bg-background/50">
               <div className="text-sm">
-                <div className="font-medium">Connect Google Suite</div>
-                <div className="text-xs text-muted-foreground">Authorize access to your Gmail and Calendar</div>
+                <div className="font-medium">Integrations</div>
+                <div className="text-xs text-muted-foreground">Manage your third-party integrations</div>
               </div>
-              <div className="flex items-center gap-2">
-                {googleConnectMessage && (
-                  <span className="text-xs text-muted-foreground max-w-[240px] truncate" title={googleConnectMessage}>{googleConnectMessage}</span>
-                )}
-                {isGoogleConnected ? (
-                  <Button onClick={handleDisconnectGoogle} disabled={isConnectingGoogle} size="sm" variant="secondary">
-                    {isConnectingGoogle ? "Disconnecting..." : "Disconnect"}
-                  </Button>
-                ) : (
-                  <Button onClick={handleConnectGoogle} disabled={isConnectingGoogle} size="sm">
-                    {isConnectingGoogle ? "Connecting..." : "Connect"}
-                  </Button>
-                )}
-              </div>
-            </div>
+              <Button
+                onClick={() => {
+                  setIsPopoverOpen(false);
+                  onOpenIntegrations?.();
+                }}
+                size="sm"
+                variant="secondary"
+              >
+                Open Integrations
+              </Button>
+            </SpotlightArea>
+
+            {/* Theme Toggle */}
+            <ThemeToggle />
 
             {/* AI Provider Selection */}
             <ProviderSelection
@@ -332,8 +272,14 @@ export const Settings = () => {
               onChange={(value) => updateSettings({ systemPrompt: value })}
             />
 
-            {/* File Upload Settings */}
-            <FileUploadSettings />
+            {/* Manage Data (pop-out dialog) */}
+            <SpotlightArea className="flex items-center justify-between gap-2 p-3 rounded-md border border-input/50 bg-background/50">
+              <div className="text-sm">
+                <div className="font-medium">Manage Data</div>
+                <div className="text-xs text-muted-foreground">View and delete uploaded files and chat history</div>
+              </div>
+              <ManageDataDialog />
+            </SpotlightArea>
           </div>
 
           <div className="pb-4 flex items-center justify-center">

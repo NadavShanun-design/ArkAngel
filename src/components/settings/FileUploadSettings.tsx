@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, File, Trash2, Loader2 } from "lucide-react";
+import { File, Trash2 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 
 interface FileInfo {
@@ -14,79 +14,63 @@ interface FileInfo {
   summary?: string;
 }
 
-export const FileUploadSettings = () => {
+type FileUploadSettingsProps = {
+  showHeader?: boolean;
+  refreshKey?: unknown;
+};
+
+export const FileUploadSettings = ({ showHeader = true, refreshKey }: FileUploadSettingsProps) => {
   const [uploadedFiles, setUploadedFiles] = useState<FileInfo[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     loadFiles();
   }, []);
 
+  // Refresh when parent dialog opens/closes
+  useEffect(() => {
+    if (refreshKey !== undefined) {
+      void loadFiles();
+    }
+  }, [refreshKey]);
+
   const loadFiles = async () => {
     try {
+      console.log('[ManageData] Loading files…');
       const files = await invoke<FileInfo[]>('list_uploaded_files');
+      console.log('[ManageData] Loaded', files?.length ?? 0, 'files');
       setUploadedFiles(files);
     } catch (error) {
       console.error('Failed to load files:', error);
     }
   };
 
-  const handleFileUpload = async () => {
-    // 1. Create hidden file input
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.multiple = true;
-    input.accept = '.txt,.md,.json,.csv,.xml,.yaml,.log,.py,.js,.ts,.java,.cpp,.c,.go,.rs,.php,.html,.css,.sql,.pdf';
-    
-    // 2. Handle file selection
-    input.onchange = async (e) => {
-      const target = e.target as HTMLInputElement;
-      if (!target.files) return;
-      
-      setIsUploading(true);
-      
-      try {
-        // 3. Process each selected file
-        for (const file of Array.from(target.files)) {
-          // 4. Convert file to byte array
-          const fileData = await file.arrayBuffer();
-          const bytes = Array.from(new Uint8Array(fileData));
-          
-          // 5. Send to Rust backend via Tauri
-          await invoke('upload_file', {
-            fileData: bytes,
-            filename: file.name
-          });
-        }
-        
-        // 6. Refresh file list
-        await loadFiles();
-      } catch (error) {
-        console.error('Upload failed:', error);
-      } finally {
-        setIsUploading(false);
-      }
-    };
-    
-    // 7. Trigger file picker
-    input.click();
-  };
-
   const handleDeleteFile = async (fileId: string) => {
     try {
-      await invoke('delete_uploaded_file', { fileId });
+      console.log('[ManageData] Delete file clicked', fileId);
+      const ok = typeof window !== 'undefined' && typeof window.confirm === 'function'
+        ? window.confirm("Delete this file permanently?")
+        : true;
+      if (!ok) return;
+      console.log('[ManageData] Deleting file via tauri', fileId);
+      await invoke('delete_uploaded_file', { file_id: fileId });
       await loadFiles();
+      console.log('[ManageData] Delete completed');
     } catch (error) {
       console.error('Delete failed:', error);
+      alert('Failed to delete file. See console for details.');
     }
   };
 
   const handleToggleContext = async (fileId: string) => {
     try {
-      await invoke('toggle_file_context', { fileId });
+      console.log('[ManageData] Toggle context clicked', fileId);
+      await invoke('toggle_file_context', { file_id: fileId });
       await loadFiles();
+      console.log('[ManageData] Toggle completed');
     } catch (error) {
       console.error('Toggle context failed:', error);
+      alert('Failed to toggle file context. See console for details.');
     }
   };
 
@@ -109,43 +93,57 @@ export const FileUploadSettings = () => {
 
   return (
     <div className="space-y-3">
-      {/* Header Section */}
-      <div className="space-y-1">
-        <h4 className="text-sm font-medium">File Uploads</h4>
-        <p className="text-xs text-muted-foreground">
-          Upload files to provide context for AI conversations
-        </p>
-      </div>
+      {/* Header Section (optional) */}
+      {showHeader && (
+        <div className="space-y-1">
+          <h4 className="text-sm font-medium">Uploaded Files</h4>
+          <p className="text-xs text-muted-foreground">Review and manage files stored on this device. You can attach new files from the attachment button in the main UI.</p>
+        </div>
+      )}
       
-      {/* Upload Button */}
-      <Button 
-        onClick={handleFileUpload} 
-        disabled={isUploading}
-        className="w-full"
-        variant="outline"
-      >
-        {isUploading ? (
-          <>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            Uploading file… You can leave this page safely.
-          </>
-        ) : (
-          <>
-            <Upload className="h-4 w-4 mr-2" />
-            Upload Files
-          </>
-        )}
-      </Button>
+      {/* Wipe All */}
+      <div>
+        <Button 
+          type="button"
+          onClick={async () => {
+            const ok = typeof window !== 'undefined' && typeof window.confirm === 'function'
+              ? window.confirm("This will permanently delete all uploaded files. Continue?")
+              : true;
+            if (!ok) return;
+            try {
+              setBusy(true);
+              console.log('[ManageData] Wipe all files via tauri');
+              await invoke('wipe_uploaded_files');
+              await loadFiles();
+              console.log('[ManageData] Wipe completed');
+            } catch (error) {
+              console.error('Wipe files failed:', error);
+              alert('Failed to wipe files. See console for details.');
+            } finally {
+              setBusy(false);
+            }
+          }}
+          variant="destructive"
+          disabled={uploadedFiles.length === 0 || busy}
+          className="w-full"
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          Wipe Files
+        </Button>
+      </div>
 
-      {/* File List (collapsible, no inner scroll) */}
+      {/* File List (collapsible) */}
       {uploadedFiles.length > 0 && (
-        <details className="w-full">
+        <details className="w-full" open>
           <summary className="text-xs font-medium text-muted-foreground cursor-pointer select-none">
-            Uploaded Files ({uploadedFiles.length})
+            Files ({uploadedFiles.length})
           </summary>
           <div className="space-y-1 mt-2">
             {uploadedFiles.map((file) => (
-              <div key={file.id} className="flex items-start justify-between p-2 border rounded-lg text-xs">
+              <div
+                key={file.id}
+                className="flex items-start justify-between p-2 border rounded-lg text-xs"
+              >
                 <div className="flex items-start space-x-2 flex-1 min-w-0">
                   <File className="h-3 w-3 text-muted-foreground flex-shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
@@ -155,19 +153,28 @@ export const FileUploadSettings = () => {
                     </p>
                   </div>
                 </div>
-                
                 <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
                   <input
                     type="checkbox"
                     checked={file.is_context_enabled}
-                    onChange={() => handleToggleContext(file.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      if (busy) return;
+                      void handleToggleContext(file.id);
+                    }}
                     className="h-3 w-3"
                     title={file.is_context_enabled ? "Disable context" : "Enable context"}
                   />
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDeleteFile(file.id)}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (busy) return;
+                      void handleDeleteFile(file.id);
+                    }}
                     className="h-5 w-5 p-0 text-destructive hover:text-destructive"
                     title="Delete file"
                   >

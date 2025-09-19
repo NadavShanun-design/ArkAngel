@@ -12,11 +12,26 @@ import remarkGfm from "remark-gfm";
 
 interface MessageHistoryProps {
   conversationHistory: ChatMessage[];
-  currentConversationId: string | null;
   onStartNewConversation: () => void;
   messageHistoryOpen: boolean;
   setMessageHistoryOpen: (open: boolean) => void;
 }
+
+// Define markdown components outside the main component
+const markdownComponents = {
+  pre: ({ ...props }: any) => (
+    <pre
+      {...props}
+      className="whitespace-pre-wrap break-words"
+    />
+  ),
+  code: ({ ...props }: any) => (
+    <code
+      {...props}
+      className="whitespace-pre-wrap break-words"
+    />
+  ),
+};
 
 export const MessageHistory = ({
   conversationHistory,
@@ -24,6 +39,31 @@ export const MessageHistory = ({
   messageHistoryOpen,
   setMessageHistoryOpen,
 }: MessageHistoryProps) => {
+  // Generate a simple one-sentence summary
+  const generateSummary = (messages: ChatMessage[]): string => {
+    if (messages.length === 0) return "No messages yet";
+
+    const userMessages = messages.filter(msg => msg.role === 'user');
+
+    if (userMessages.length === 0) return "Conversation started";
+
+    const firstUserMessage = userMessages[0].content;
+    const lastUserMessage = userMessages[userMessages.length - 1].content;
+
+    // Create a simple summary based on the conversation
+    let summary = "";
+
+    if (userMessages.length === 1) {
+      summary = `Single question: ${firstUserMessage.substring(0, 50)}${firstUserMessage.length > 50 ? '...' : ''}`;
+    } else {
+      summary = `${userMessages.length} exchanges about ${lastUserMessage.substring(0, 40)}${lastUserMessage.length > 40 ? '...' : ''}`;
+    }
+
+    return summary;
+  };
+
+  const summary = generateSummary(conversationHistory);
+
   return (
     <Popover open={messageHistoryOpen} onOpenChange={setMessageHistoryOpen}>
       <PopoverTrigger asChild>
@@ -54,6 +94,11 @@ export const MessageHistory = ({
               <p className="text-xs text-muted-foreground">
                 {conversationHistory.length} messages in this conversation
               </p>
+              {conversationHistory.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1 italic">
+                  {summary}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -85,6 +130,7 @@ export const MessageHistory = ({
         <ScrollArea className="h-[calc(100vh-10rem)]">
           <div className="p-4 space-y-4">
             {conversationHistory
+              .slice()
               .sort((a, b) => b?.timestamp - a?.timestamp)
               .map((message) => (
                 <div
@@ -109,20 +155,7 @@ export const MessageHistory = ({
                   <div className="text-sm select-auto break-words whitespace-pre-wrap">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
-                      components={{
-                        pre: ({ node, ...props }) => (
-                          <pre
-                            {...props}
-                            className="whitespace-pre-wrap break-words"
-                          />
-                        ),
-                        code: ({ node, ...props }) => (
-                          <code
-                            {...props}
-                            className="whitespace-pre-wrap break-words"
-                          />
-                        ),
-                      }}
+                      components={markdownComponents}
                     >
                       {message.content}
                     </ReactMarkdown>

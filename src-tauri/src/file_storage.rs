@@ -203,6 +203,27 @@ impl FileStorage {
         
         Ok(())
     }
+
+    /// Delete all uploaded files and clear the index
+    pub fn wipe_all(&self) -> Result<()> {
+        // Remove all files in uploads_dir except the index.json itself
+        if self.uploads_dir.exists() {
+            for entry in fs::read_dir(&self.uploads_dir)? {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_file() {
+                    // Keep index.json handling for last
+                    if path.file_name().and_then(|n| n.to_str()) == Some("index.json") {
+                        continue;
+                    }
+                    let _ = fs::remove_file(&path);
+                }
+            }
+        }
+
+        // Clear index.json to an empty array
+        self.save_index(&[])
+    }
     
     pub fn toggle_context(&self, file_id: &str) -> Result<FileInfo> {
         let mut files = self.list_files()?;

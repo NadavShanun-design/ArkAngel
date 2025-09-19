@@ -40,17 +40,65 @@ function Button({
   variant,
   size,
   asChild = false,
+  // Enable cursor-following spotlight/radial glow
+  spotlight = false,
+  onMouseMove,
+  onMouseLeave,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
+    spotlight?: boolean;
   }) {
-  const Comp = asChild ? Slot : "button";
+  // Use native element by default; allow Slot when not using spotlight explicitly
+  let Comp: typeof Slot | "button" = asChild ? Slot : "button";
+
+  const ref = React.useRef<HTMLElement | null>(null);
+  const [inPopover, setInPopover] = React.useState(false);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ancestor = el.closest('[data-slot="popover-content"]');
+    setInPopover(!!ancestor);
+  }, []);
+
+  const activeSpotlight = spotlight || inPopover;
+
+  // Track mouse position relative to the button when spotlight is enabled
+  const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    if (!activeSpotlight) return;
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    target.style.setProperty("--spot-x", `${x}px`);
+    target.style.setProperty("--spot-y", `${y}px`);
+  };
+
+  const handleMouseLeave = (e: React.MouseEvent<HTMLElement>) => {
+    if (!activeSpotlight) return;
+    const target = e.currentTarget as HTMLElement;
+    // Clear to fallback center
+    target.style.removeProperty("--spot-x");
+    target.style.removeProperty("--spot-y");
+  };
 
   return (
     <Comp
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      ref={ref as any}
+      className={cn(
+        buttonVariants({ variant, size, className }),
+        activeSpotlight && "aa-spotlight relative overflow-hidden"
+      )}
+      onMouseMove={(e: React.MouseEvent<HTMLElement>) => {
+        handleMouseMove(e);
+        onMouseMove?.(e);
+      }}
+      onMouseLeave={(e: React.MouseEvent<HTMLElement>) => {
+        handleMouseLeave(e);
+        onMouseLeave?.(e);
+      }}
       {...props}
     />
   );

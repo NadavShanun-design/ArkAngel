@@ -6,13 +6,7 @@ import {
   Calendar,
   Loader2,
 } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Button,
-  ScrollArea,
-} from "@/components";
+import { Popover, PopoverContent, PopoverTrigger, Button, ScrollArea, SpotlightArea } from "@/components";
 import { loadChatHistory, deleteConversation } from "@/lib";
 import { ChatConversation } from "@/types";
 import { useWindowResize, useWindowFocus } from "@/hooks";
@@ -21,12 +15,14 @@ interface ChatHistoryProps {
   onSelectConversation: (conversation: ChatConversation) => void;
   onNewConversation: () => void;
   currentConversationId: string | null;
+  onViewAllChats?: () => void;
 }
 
 export const ChatHistory = ({
   onSelectConversation,
   onNewConversation,
   currentConversationId,
+  onViewAllChats,
 }: ChatHistoryProps) => {
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -39,7 +35,10 @@ export const ChatHistory = ({
   useEffect(() => {
     if (isOpen) {
       const loadedConversations = loadChatHistory();
-      setConversations(loadedConversations);
+      // Sort by updatedAt descending and take only the last 5
+      const sortedConversations = [...loadedConversations].sort((a, b) => b.updatedAt - a.updatedAt);
+      const recentConversations = sortedConversations.slice(0, 5);
+      setConversations(recentConversations);
     }
   }, [isOpen]);
 
@@ -123,22 +122,38 @@ export const ChatHistory = ({
         <div className="border-b border-input/50 p-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-              All Conversations
+              Recent Conversations
             </h2>
-            <Button
-              size="sm"
-              onClick={() => {
-                onNewConversation();
-                setIsOpen(false);
-              }}
-              className="text-xs"
-              title="Start new chat"
-            >
-              New Chat
-            </Button>
+            <div className="flex items-center gap-2">
+              {onViewAllChats && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    onViewAllChats();
+                    setIsOpen(false);
+                  }}
+                  className="text-xs"
+                  title="View all conversations"
+                >
+                  View All
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={() => {
+                  onNewConversation();
+                  setIsOpen(false);
+                }}
+                className="text-xs"
+                title="Start new chat"
+              >
+                New Chat
+              </Button>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Your conversation history
+            Your recent conversation history
           </p>
         </div>
 
@@ -157,13 +172,10 @@ export const ChatHistory = ({
             ) : (
               <div className="space-y-1 pr-2">
                 {conversations.map((conversation) => (
-                  <div
+                  <SpotlightArea className="group flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:bg-muted/50 w-full text-left"
+                    as="button"
                     key={conversation.id}
-                    className={`group flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:bg-muted/50 ${
-                      conversation.id === currentConversationId
-                        ? "bg-muted border-primary/20"
-                        : "border-transparent hover:border-input/50"
-                    }`}
+                    data-active={conversation.id === currentConversationId}
                     onClick={() => handleSelectConversation(conversation)}
                   >
                     <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
@@ -204,7 +216,7 @@ export const ChatHistory = ({
                         </span>
                       </div>
                     </div>
-                  </div>
+                  </SpotlightArea>
                 ))}
               </div>
             )}
