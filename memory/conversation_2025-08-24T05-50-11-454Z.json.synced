@@ -1,0 +1,32 @@
+{
+  "createdAt": 1756014528654,
+  "id": "conv_1756014528654_c3lytbw5a",
+  "messages": [
+    {
+      "content": "To Kill a Mockingbird.",
+      "id": "msg_1756014528654_assistant",
+      "role": "assistant",
+      "timestamp": 1756014528655
+    },
+    {
+      "content": "Oh, give me a name of a book.",
+      "id": "msg_1756014528654_user",
+      "role": "user",
+      "timestamp": 1756014528654
+    },
+    {
+      "content": "My phone number is BLOCKED.",
+      "id": "msg_1756014552092_user",
+      "role": "user",
+      "timestamp": 1756014552092
+    },
+    {
+      "content": "The Night Circus by Erin Morgenstern.",
+      "id": "msg_1756014552092_assistant",
+      "role": "assistant",
+      "timestamp": 1756014552093
+    }
+  ],
+  "title": "Oh, give me a name of a book.",
+  "updatedAt": 1756014552092
+}

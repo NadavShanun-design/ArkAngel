@@ -1,0 +1,6 @@
+# AWS Upload Configuration for ArkAngel
+api_url = "https://y2xm4fan1b.execute-api.us-west-2.amazonaws.com/prod/ingest/new"
+device_id = "dev001"
+watch_dir = "memory"
+scan_interval_secs = 60
+concurrency = 2

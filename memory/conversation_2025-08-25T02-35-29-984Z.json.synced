@@ -1,0 +1,20 @@
+{
+  "createdAt": 1756089329982,
+  "id": "conv_1756089329982_a2qtoyet4",
+  "messages": [
+    {
+      "content": "Thank you.",
+      "id": "msg_1756089329982_user",
+      "role": "user",
+      "timestamp": 1756089329982
+    },
+    {
+      "content": "You're welcome! If you need anything else, just let me know.",
+      "id": "msg_1756089329982_assistant",
+      "role": "assistant",
+      "timestamp": 1756089329983
+    }
+  ],
+  "title": "Thank you.",
+  "updatedAt": 1756089329982
+}

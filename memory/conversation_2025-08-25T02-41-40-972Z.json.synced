@@ -1,0 +1,32 @@
+{
+  "createdAt": 1756089669641,
+  "id": "conv_1756089669641_psczvi1ug",
+  "messages": [
+    {
+      "content": "Understood. I’ll stay quiet—ping me if you need anything.",
+      "id": "msg_1756089669641_assistant",
+      "role": "assistant",
+      "timestamp": 1756089669642
+    },
+    {
+      "content": "Shh. Shh.",
+      "id": "msg_1756089669641_user",
+      "role": "user",
+      "timestamp": 1756089669641
+    },
+    {
+      "content": "Okay? Awesome.",
+      "id": "msg_1756089680850_user",
+      "role": "user",
+      "timestamp": 1756089680850
+    },
+    {
+      "content": "Got it—here if you need me.",
+      "id": "msg_1756089680850_assistant",
+      "role": "assistant",
+      "timestamp": 1756089680851
+    }
+  ],
+  "title": "Shh. Shh.",
+  "updatedAt": 1756089680850
+}

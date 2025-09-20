@@ -1,0 +1,20 @@
+{
+  "createdAt": 1756087128647,
+  "id": "conv_1756087128647_mmoo1rdl7",
+  "messages": [
+    {
+      "content": "I don't need to go, I like how I'm BLOCKED I just imagine me I don't know, I don't know, I don't know I don't want to go I don't know, I don't know",
+      "id": "msg_1756087128647_user",
+      "role": "user",
+      "timestamp": 1756087128647
+    },
+    {
+      "content": "It sounds like you’re feeling overwhelmed and unsure, and you really don’t want to go. That’s okay. I’m here with you.\n\nA few gentle things that might help right now:\n- Take a slow breath: inhale 4, hold 4, exhale 6, a few times.\n- Ground yourself: name 5 things you can see, 4 you can feel, 3 you can hear, 2 you can smell, 1 you can taste.\n- If it’s hard to explain, try short pieces: What does “go” mean here? Where to, and what feels scary about it?\n\nYou don’t have to decide anything this second. If you want, we can break it down together—what you want, what you don’t, and any small next step that feels safe.\n\nAre you safe right now? If you’re in immediate danger or feel like you might hurt yourself, please call local emergency services or a crisis line:\n- US: call or text 988 (Suicide & Crisis Lifeline)\n- Outside the US: find local resources at findahelpline.com\n\nIf you’d like, tell me a bit more about what’s making this hard. I’ll listen.",
+      "id": "msg_1756087128647_assistant",
+      "role": "assistant",
+      "timestamp": 1756087128648
+    }
+  ],
+  "title": "I don't need to go, I like how I'm BLOCKED I just...",
+  "updatedAt": 1756087128647
+}

@@ -1,0 +1,44 @@
+{
+  "createdAt": 1756089329982,
+  "id": "conv_1756089329982_a2qtoyet4",
+  "messages": [
+    {
+      "content": "Sure—what can I help you with?",
+      "id": "msg_1756089341256_assistant",
+      "role": "assistant",
+      "timestamp": 1756089341257
+    },
+    {
+      "content": "Oh, yeah.",
+      "id": "msg_1756089341256_user",
+      "role": "user",
+      "timestamp": 1756089341256
+    },
+    {
+      "content": "You're welcome! If you need anything else, just let me know.",
+      "id": "msg_1756089329982_assistant",
+      "role": "assistant",
+      "timestamp": 1756089329983
+    },
+    {
+      "content": "Thank you.",
+      "id": "msg_1756089329982_user",
+      "role": "user",
+      "timestamp": 1756089329982
+    },
+    {
+      "content": "Thank you very much for your time.",
+      "id": "msg_1756089367586_user",
+      "role": "user",
+      "timestamp": 1756089367586
+    },
+    {
+      "content": "You’re very welcome—happy to help! If anything else comes up, just ask. Have a great day!",
+      "id": "msg_1756089367586_assistant",
+      "role": "assistant",
+      "timestamp": 1756089367587
+    }
+  ],
+  "title": "Thank you.",
+  "updatedAt": 1756089367586
+}
