@@ -97,6 +97,8 @@ export const generateNotificationContent = (activity: ToolActivity): {
   icon: string;
 } | null => {
   const { name, input, output } = activity;
+  const inputObj: Record<string, any> =
+    typeof input === 'object' && input !== null ? (input as Record<string, any>) : {};
   const ids = extractIds(output);
   
   // Gmail actions
@@ -104,13 +106,13 @@ export const generateNotificationContent = (activity: ToolActivity): {
     if (name.includes('send') || name.includes('compose')) {
       return {
         title: '✉️ Email Sent',
-        message: `Email sent successfully${input?.subject ? ` - ${input.subject}` : ''}`,
+        message: `Email sent successfully${inputObj?.subject ? ` - ${inputObj.subject}` : ''}`,
         url: generateGoogleUrls.gmail.sent(),
         icon: '✉️'
       };
     }
     if (name.includes('read') || name.includes('get') || name.includes('search')) {
-      const query = input?.query || input?.q;
+      const query = inputObj?.query || inputObj?.q;
       return {
         title: '📧 Gmail Search',
         message: 'Gmail messages retrieved successfully',
@@ -125,7 +127,7 @@ export const generateNotificationContent = (activity: ToolActivity): {
     if (name.includes('create') || name.includes('schedule')) {
       return {
         title: '📅 Event Created',
-        message: `Calendar event created${input?.summary ? ` - ${input.summary}` : ''}`,
+        message: `Calendar event created${inputObj?.summary ? ` - ${inputObj.summary}` : ''}`,
         url: generateGoogleUrls.calendar.event(ids.eventId || ids.id),
         icon: '📅'
       };
@@ -141,7 +143,7 @@ export const generateNotificationContent = (activity: ToolActivity): {
     if (name.includes('modify') || name.includes('update')) {
       return {
         title: '📝 Event Updated',
-        message: `Calendar event updated${input?.summary ? ` - ${input.summary}` : ''}`,
+        message: `Calendar event updated${inputObj?.summary ? ` - ${inputObj.summary}` : ''}`,
         url: generateGoogleUrls.calendar.event(ids.eventId || ids.id),
         icon: '📝'
       };
@@ -153,7 +155,7 @@ export const generateNotificationContent = (activity: ToolActivity): {
     if (name.includes('upload') || name.includes('create')) {
       return {
         title: '📁 File Uploaded',
-        message: `File uploaded to Google Drive${input?.name ? ` - ${input.name}` : ''}`,
+        message: `File uploaded to Google Drive${inputObj?.name ? ` - ${inputObj.name}` : ''}`,
         url: generateGoogleUrls.drive.file(ids.fileId || ids.id),
         icon: '📁'
       };
@@ -173,7 +175,7 @@ export const generateNotificationContent = (activity: ToolActivity): {
     if (name.includes('create')) {
       return {
         title: '📄 Document Created',
-        message: `Google Doc created${input?.title ? ` - ${input.title}` : ''}`,
+        message: `Google Doc created${inputObj?.title ? ` - ${inputObj.title}` : ''}`,
         url: generateGoogleUrls.docs.doc(ids.documentId || ids.id),
         icon: '📄'
       };
@@ -193,7 +195,7 @@ export const generateNotificationContent = (activity: ToolActivity): {
     if (name.includes('create')) {
       return {
         title: '📊 Spreadsheet Created',
-        message: `Google Sheet created${input?.title ? ` - ${input.title}` : ''}`,
+        message: `Google Sheet created${inputObj?.title ? ` - ${inputObj.title}` : ''}`,
         url: generateGoogleUrls.sheets.sheet(ids.spreadsheetId || ids.id),
         icon: '📊'
       };
@@ -221,7 +223,7 @@ export const generateNotificationContent = (activity: ToolActivity): {
     if (name.includes('create')) {
       return {
         title: '🖼️ Presentation Created',
-        message: `Google Slides created${input?.title ? ` - ${input.title}` : ''}`,
+        message: `Google Slides created${inputObj?.title ? ` - ${inputObj.title}` : ''}`,
         url: generateGoogleUrls.slides.presentation(ids.presentationId || ids.id),
         icon: '🖼️'
       };
@@ -233,7 +235,7 @@ export const generateNotificationContent = (activity: ToolActivity): {
     if (name.includes('create')) {
       return {
         title: '📝 Form Created',
-        message: `Google Form created${input?.title ? ` - ${input.title}` : ''}`,
+        message: `Google Form created${inputObj?.title ? ` - ${inputObj.title}` : ''}`,
         url: generateGoogleUrls.forms.form(ids.formId || ids.id),
         icon: '📝'
       };
@@ -245,7 +247,7 @@ export const generateNotificationContent = (activity: ToolActivity): {
     if (name.includes('create') || name.includes('insert')) {
       return {
         title: '✅ Task Created',
-        message: `Task created${input?.title ? ` - ${input.title}` : ''}`,
+        message: `Task created${inputObj?.title ? ` - ${inputObj.title}` : ''}`,
         url: generateGoogleUrls.tasks.main(),
         icon: '✅'
       };
@@ -264,8 +266,8 @@ export const generateNotificationContent = (activity: ToolActivity): {
   if (name.includes('search')) {
     return {
       title: '🔍 Search Completed',
-      message: `Search completed${input?.query ? ` for "${input.query}"` : ''}`,
-      url: 'https://www.google.com/search?q=' + encodeURIComponent(input?.query || input?.q || ''),
+      message: `Search completed${inputObj?.query ? ` for "${inputObj.query}"` : ''}`,
+      url: 'https://www.google.com/search?q=' + encodeURIComponent(inputObj?.query || inputObj?.q || ''),
       icon: '🔍'
     };
   }
@@ -317,7 +319,7 @@ export const showGoogleWorkspaceNotification = (activity: ToolActivity) => {
   
   // Show custom toast with external link
   toast.custom(
-    (t) => (
+    (t: { visible: boolean }) => (
       <div
         className={`${
           t.visible ? 'animate-enter' : 'animate-leave'

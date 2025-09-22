@@ -37,8 +37,9 @@ export interface ToolActivity {
   id: string;
   name: string;
   status: "in_progress" | "complete" | "error";
-  input?: unknown;
-  output?: unknown;
+  // Use indexable shapes so notification helpers can safely access known props
+  input?: Record<string, any> | string | null;
+  output?: Record<string, any> | string | null;
   error?: string | null;
   startedAt: number;
   endedAt: number | null;
