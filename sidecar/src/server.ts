@@ -56,7 +56,7 @@ function stringifyPreview(value: unknown, maxLen: number = 300): string {
 
 function getCredentialStoreDir(): string {
   const envDir = process.env.GOOGLE_MCP_CREDENTIALS_DIR
-  if (envDir && envDir.trim()) return envDir
+  if (envDir?.trim()) return envDir
   const home = process.env.HOME || process.env.USERPROFILE || ''
   if (home) return path.join(home, '.google_workspace_mcp', 'credentials')
   return path.join(process.cwd(), '.credentials')
@@ -100,6 +100,64 @@ type ConversationTurn = {
   content: string
   timestamp: string
 }
+
+// ---------------- Design Sync (SSE + POST) ----------------
+type DesignState = { accent: 'bw' | 'rainbow'; gradient: 'bw' | 'rainbow' }
+let designState: DesignState = { accent: 'bw', gradient: 'bw' }
+
+type SSEClient = { id: number; res: any }
+const sseClients = new Map<number, SSEClient>()
+let nextClientId = 1
+
+function sendSSEEvent(data: any) {
+  const payload = `data: ${JSON.stringify(data)}\n\n`
+  for (const { res } of sseClients.values()) {
+    try { res.write(payload) } catch {}
+  }
+}
+
+app.get('/design/events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache, no-transform')
+  res.setHeader('Connection', 'keep-alive')
+  res.flushHeaders?.()
+
+  const id = nextClientId++
+  sseClients.set(id, { id, res })
+
+  // Send current state immediately
+  sendSSEEvent({ type: 'state', accent: designState.accent, gradient: designState.gradient })
+
+  req.on('close', () => {
+    sseClients.delete(id)
+  })
+})
+
+app.post('/design', (req, res) => {
+  try {
+    const { accent, gradient } = req.body || {}
+    let changed = false
+    if (accent === 'bw' || accent === 'rainbow') {
+      designState.accent = accent
+      changed = true
+    }
+    if (gradient === 'bw' || gradient === 'rainbow') {
+      designState.gradient = gradient
+      changed = true
+    }
+    if (changed) {
+      sendSSEEvent({ type: 'update', accent: designState.accent, gradient: designState.gradient })
+    }
+    res.json({ ok: true, state: designState })
+  } catch (err) {
+    res.status(400).json({ ok: false, error: String(err) })
+  }
+})
+
+// Simple ping for design sync connectivity
+app.get('/design/ping', (_req, res) => {
+  res.json({ ok: true, state: designState, timestamp: new Date().toISOString() })
+})
 
 type ConversationState = {
   turns: ConversationTurn[]
@@ -308,9 +366,9 @@ function createAgent(opts: { providerId?: string; model?: string; apiKey?: strin
 }
 
 class StreamingMCPAgent {
-  private agent: MCPAgent
-  private streamCallback: (event: any) => void
-  private toolStartTimes: Map<string, number[]>
+  private readonly agent: MCPAgent
+  private readonly streamCallback: (event: any) => void
+  private readonly toolStartTimes: Map<string, number[]>
 
   constructor(agent: MCPAgent, streamCallback: (event: any) => void) {
     this.agent = agent

@@ -118,6 +118,41 @@
   --aa-spot-color-2: rgba(255, 255, 255, 0.32);
 }
 
+/* Accent/Gradient runtime selectors */
+[data-accent="rainbow"]:root,
+.dark[data-accent="rainbow"] {
+  /* keep background/foreground from theme, only adjust accent and primary hues subtly */
+  --primary: oklch(0.7 0.25 280);
+  --primary-foreground: oklch(0.98 0 0);
+  --accent: oklch(0.8 0.2 280);
+  --accent-foreground: oklch(0.18 0 0);
+}
+
+/* Gradient helpers */
+.aa-rainbow-gradient {
+  background: linear-gradient(
+    90deg,
+    #ef4444,
+    #f59e0b,
+    #22c55e,
+    #3b82f6,
+    #6366f1,
+    #a855f7,
+    #ef4444
+  );
+}
+
+.aa-gradient-text {
+  background: linear-gradient(90deg, var(--primary), color-mix(in oklch, var(--primary), white 30%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+[data-gradient="rainbow"] .aa-gradient-text {
+  background: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e, #3b82f6, #6366f1, #a855f7, #ef4444);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -161,6 +196,11 @@
   animation: aa-rotate 1.2s linear infinite;
   opacity: 0.7;
   pointer-events: none;
+}
+
+/* When user chooses rainbow gradient, also give loaders a rainbow ring */
+[data-gradient="rainbow"] .tool-activity.loading::before {
+  background: conic-gradient(from var(--aa-angle), #ef4444, #f59e0b, #22c55e, #3b82f6, #6366f1, #a855f7, #ef4444);
 }
 
 /* Rotate chevron when details is open */
@@ -216,4 +256,17 @@
 .aa-spotlight:hover::before,
 .aa-spotlight:focus-visible::before {
   opacity: 1;
+}
+
+/* Rainbow variant for the spotlight when gradient is rainbow */
+[data-gradient="rainbow"] .aa-spotlight::before {
+  background: radial-gradient(
+    360px 360px at var(--spot-x, 50%) var(--spot-y, 50%),
+    #ef4444 0%,
+    #f59e0b 22%,
+    #22c55e 44%,
+    #3b82f6 66%,
+    #a855f7 88%,
+    transparent 95%
+  );
 }

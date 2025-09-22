@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, ScrollArea, SpotlightArea } from "@/components";
-import { ThemeToggle } from "@/components/settings/ThemeToggle";
+// Theme changes (light/dark/system) are handled here directly for the website
+import { useTheme } from "@/theme-provider";
 import { getAvailableIntegrations, Integration } from "@/components/integrations/integrationDefinitions";
 import { loadChatHistory, clearChatHistory } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Settings, Trash2 } from "lucide-react";
+import { STORAGE_KEYS } from "@/config";
 
 type SectionKey =
   | "profile"
@@ -64,7 +66,7 @@ export const AdvancedSettingsPage: React.FC = () => {
         {/* Header */}
         <div className="border-b border-input/50 p-6">
           <div className="w-full flex flex-col items-center text-center">
-            <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold tracking-tight aa-gradient-text">
               advanced settings
             </h1>
           </div>
@@ -132,13 +134,183 @@ const ActionsSection: React.FC = () => {
 };
 
 const DesignSection: React.FC = () => {
+  const { theme, setTheme } = useTheme();
+  const [accent, setAccent] = useState<string>(() => localStorage.getItem(STORAGE_KEYS.DESIGN_ACCENT) || "bw");
+  const [gradient, setGradient] = useState<string>(() => localStorage.getItem(STORAGE_KEYS.DESIGN_GRADIENT) || "bw");
+  const channelRef = React.useRef<BroadcastChannel | null>(null);
+  const postTimerRef = useRef<number | null>(null);
+  const [connected, setConnected] = useState<boolean>(false);
+
+  const postDesignUpdate = (a: string, g: string) => {
+    const payload = { accent: a, gradient: g } as any;
+    // Attempt both localhost and 127.0.0.1 to maximize success
+    const send = (base: string) => fetch(`${base}/design`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      mode: "cors",
+      keepalive: true,
+    }).catch(() => {});
+    send("http://127.0.0.1:8765");
+    send("http://localhost:8765");
+  };
+
+  // Debounced notifier to avoid bursts
+  const postDesignUpdateDebounced = (a: string, g: string) => {
+    if (postTimerRef.current) window.clearTimeout(postTimerRef.current);
+    postTimerRef.current = window.setTimeout(() => {
+      postDesignUpdate(a, g);
+      postTimerRef.current = null;
+    }, 100) as unknown as number;
+  };
+
+  useEffect(() => {
+    try {
+      channelRef.current = new BroadcastChannel("arkangel-design");
+    } catch {}
+    return () => {
+      try { channelRef.current?.close(); } catch {}
+    };
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.accent = accent; // 'bw' | 'rainbow'
+    localStorage.setItem(STORAGE_KEYS.DESIGN_ACCENT, accent);
+    try { channelRef.current?.postMessage({ type: "accent", value: accent }); } catch {}
+  }, [accent]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.gradient = gradient; // 'bw' | 'rainbow'
+    localStorage.setItem(STORAGE_KEYS.DESIGN_GRADIENT, gradient);
+    try { channelRef.current?.postMessage({ type: "gradient", value: gradient }); } catch {}
+  }, [gradient]);
+
+  // Single centralized notifier to sidecar (avoid duplicate POSTs)
+  useEffect(() => {
+    postDesignUpdateDebounced(accent, gradient);
+  }, [accent, gradient]);
+
+  // Connection indicator: ping sidecar periodically
+  useEffect(() => {
+    let mounted = true;
+    let id: number | null = null;
+    const ping = async () => {
+      const tryPing = async (base: string) => {
+        try {
+          const r = await fetch(`${base}/design/ping`, { method: 'GET', mode: 'cors' });
+          if (!mounted) return false;
+          if (r.ok) {
+            setConnected(true);
+            return true;
+          }
+        } catch {}
+        return false;
+      };
+      const ok = await tryPing('http://127.0.0.1:8765') || await tryPing('http://localhost:8765');
+      if (!ok && mounted) setConnected(false);
+    };
+    void ping();
+    id = window.setInterval(ping, 5000) as unknown as number;
+    return () => { mounted = false; if (id) window.clearInterval(id); };
+  }, []);
+
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">Design</h2>
-      <p className="text-sm text-muted-foreground">Theme and appearance that mirror the main application.</p>
-      <div className="p-4 border border-input/50 rounded-md bg-background/50">
-        <ThemeToggle />
-      </div>
+      <p className="text-sm text-muted-foreground">Choose minimalist black/white or expressive rainbow accents. Gradients can also be rainbow.</p>
+
+      {/* Option A: Single control for Accent Style (sets both accent and gradient) */}
+      <SpotlightArea className="p-4 border border-input/50 rounded-md bg-background/50">
+        <div className="mb-2 text-sm font-medium">Accent Style</div>
+        <div className="text-xs text-muted-foreground mb-3">Choose neutral b/w or expressive rainbow for accents and spotlight effects.</div>
+        <fieldset className="flex items-center gap-3" aria-label="Accent Style">
+          <label className="inline-flex items-center justify-center">
+            <input
+              type="radio"
+              name="accent-style"
+              value="bw"
+              className="sr-only"
+              checked={accent === "bw" && gradient === "bw"}
+              onChange={() => { setAccent("bw"); setGradient("bw"); }}
+            />
+            <span
+              className={cn(
+                "h-10 w-10 rounded-full border border-input/50 bg-gradient-to-br from-background to-foreground/10",
+                accent === "bw" && gradient === "bw" && "ring-2 ring-primary"
+              )}
+              aria-hidden="true"
+              title="Black & White"
+            />
+            <span className="sr-only">Black &amp; White</span>
+          </label>
+          <label className="inline-flex items-center justify-center">
+            <input
+              type="radio"
+              name="accent-style"
+              value="rainbow"
+              className="sr-only"
+              checked={accent === "rainbow" && gradient === "rainbow"}
+              onChange={() => { setAccent("rainbow"); setGradient("rainbow"); }}
+            />
+            <span
+              className={cn(
+                "h-10 w-10 rounded-full border border-input/50",
+                "bg-[conic-gradient(#ef4444,#f59e0b,#22c55e,#3b82f6,#6366f1,#a855f7,#ef4444)]",
+                accent === "rainbow" && gradient === "rainbow" && "ring-2 ring-primary"
+              )}
+              aria-hidden="true"
+              title="Rainbow"
+            />
+            <span className="sr-only">Rainbow</span>
+          </label>
+        </fieldset>
+        <div className="mt-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className={cn("inline-block h-2 w-2 rounded-full", connected ? "bg-green-500" : "bg-zinc-500")}></span>
+            {connected ? "Connected to app" : "Not connected"}
+          </div>
+          <Button size="sm" variant="secondary" onClick={() => { setTheme("system"); setAccent("bw"); setGradient("bw"); }}>
+            Reset to defaults
+          </Button>
+        </div>
+      </SpotlightArea>
+
+      {/* Theme Appearance (light / dark / system) - website only */}
+      <SpotlightArea className="p-4 border border-input/50 rounded-md bg-background/50">
+        <div className="mb-2 text-sm font-medium">Appearance</div>
+        <div className="text-xs text-muted-foreground mb-3">Choose when the app uses light or dark mode.</div>
+        <div className="flex items-center gap-2">
+          <button
+            className={cn(
+              "px-3 py-1.5 rounded-md border border-input/50 text-sm",
+              theme === "light" && "ring-2 ring-primary"
+            )}
+            onClick={() => setTheme("light")}
+          >
+            light
+          </button>
+          <button
+            className={cn(
+              "px-3 py-1.5 rounded-md border border-input/50 text-sm",
+              theme === "dark" && "ring-2 ring-primary"
+            )}
+            onClick={() => setTheme("dark")}
+          >
+            dark
+          </button>
+          <button
+            className={cn(
+              "px-3 py-1.5 rounded-md border border-input/50 text-sm",
+              theme === "system" && "ring-2 ring-primary"
+            )}
+            onClick={() => setTheme("system")}
+          >
+            system
+          </button>
+        </div>
+      </SpotlightArea>
     </div>
   );
 };

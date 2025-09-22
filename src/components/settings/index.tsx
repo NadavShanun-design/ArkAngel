@@ -3,13 +3,13 @@ import { useWindowResize } from "@/hooks";
 import { SettingsIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger, Button, ScrollArea, SpotlightArea } from "@/components";
 import { ProviderSelection } from "./ProviderSelection";
+import { ThemeToggle } from "./ThemeToggle";
 import { ApiKeyInput } from "./ApiKeyInput";
 import { ModelSelection } from "./ModelSelection";
 import { Disclaimer } from "./Disclaimer";
 import { SystemPrompt } from "./SystemPrompt";
 import { Speech } from "./Speech";
 import { FileUploadSettings } from "./FileUploadSettings";
-import { ThemeToggle } from "./ThemeToggle";
 import {
   loadSettingsFromStorage,
   saveSettingsToStorage,
@@ -148,13 +148,18 @@ export const Settings: React.FC<SettingsProps> = ({ onOpenIntegrations }) => {
   }, [isPopoverOpen, resizeWindow]);
 
   const openAdvancedInBrowser = () => {
-    const origin = window.location.origin;
-    const target = origin.startsWith("http")
-      ? `${origin}/settings`
-      : "https://www.arkangel.com/settings";
-    openExternalUrl(target).catch(() => {
+    // Always open in external browser
+    try {
+      const origin = window.location.origin;
+      const target = origin.startsWith("http") ? `${origin}/settings` : "https://www.arkangel.com/settings";
+      openExternalUrl(target).catch(() => {
+        window.open(target, "_blank", "noopener,noreferrer");
+      });
+    } catch {
+      const origin = window.location.origin;
+      const target = origin.startsWith("http") ? `${origin}/settings` : "https://www.arkangel.com/settings";
       window.open(target, "_blank", "noopener,noreferrer");
-    });
+    }
   };
 
   return (
@@ -226,7 +231,7 @@ export const Settings: React.FC<SettingsProps> = ({ onOpenIntegrations }) => {
 
             {/** Advanced settings access moved to bottom link */}
 
-            {/* Theme Toggle */}
+            {/* Theme Toggle (in-app only) */}
             <ThemeToggle />
 
             {/* AI Provider Selection */}

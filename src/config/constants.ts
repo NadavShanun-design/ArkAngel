@@ -4,6 +4,8 @@ export const STORAGE_KEYS = {
   THEME: "theme",
   CHAT_HISTORY: "chat_history",
   CUSTOM_PROVIDERS: "custom_providers",
+  DESIGN_ACCENT: "design_accent", // 'bw' | 'rainbow'
+  DESIGN_GRADIENT: "design_gradient", // 'bw' | 'rainbow'
 } as const;
 
 // Available AI providers

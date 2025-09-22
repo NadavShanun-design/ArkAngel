@@ -37,8 +37,8 @@ export interface ToolActivity {
   id: string;
   name: string;
   status: "in_progress" | "complete" | "error";
-  input?: any | null;
-  output?: any | null;
+  input?: unknown;
+  output?: unknown;
   error?: string | null;
   startedAt: number;
   endedAt: number | null;
