@@ -262,7 +262,14 @@ export const useCompletion = () => {
         setState((prev) => ({ ...prev, isLoading: false }));
 
         if (fullResponse) {
-          saveCurrentConversation(input, fullResponse, state.attachedFiles);
+          const savedId = saveCurrentConversation(input, fullResponse, state.attachedFiles);
+          // Best-effort: link currently context-enabled files to this conversation
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            await invoke('link_enabled_files_to_conversation', { conversation_id: savedId });
+          } catch (error) {
+            console.warn('Failed to link files to conversation:', error);
+          }
           setState((prev) => ({
             ...prev,
             input: "",
@@ -342,10 +349,10 @@ export const useCompletion = () => {
       userMessage: string,
       assistantResponse: string,
       _attachedFiles: AttachedFile[]
-    ) => {
+    ): string => {
       const conversationId =
         state.currentConversationId ||
-        `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        `conv_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
       const timestamp = Date.now();
 
       const userMsg: ChatMessage = {
@@ -390,6 +397,7 @@ export const useCompletion = () => {
         currentConversationId: conversationId,
         conversationHistory: newMessages,
       }));
+      return conversationId;
     },
     [state.currentConversationId, state.conversationHistory]
   );

@@ -14,6 +14,9 @@ import {
 import { Mail } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 
+// Google brand blue
+const GOOGLE_BRAND_COLOR = "#4285F4";
+
 export interface Integration {
   id: string;
   name: string;

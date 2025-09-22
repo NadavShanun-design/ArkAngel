@@ -105,7 +105,7 @@ fn bridge_tokens_to_mcp(_app: &tauri::AppHandle, tokens: &GoogleTokens) -> Resul
     let expiry_ms: u128 = tokens.obtained_at_ms + (expires_in as u128 * 1000);
     let secs = (expiry_ms / 1000) as i64;
     let nanos = ((expiry_ms % 1000) as u32) * 1_000_000;
-    if let Ok(dt) = DateTime::from_timestamp(secs, nanos) {
+    if let Some(dt) = DateTime::from_timestamp(secs, nanos) {
       Some(dt.naive_utc().format("%Y-%m-%dT%H:%M:%S%.6f").to_string())
     } else { None }
   } else { None };

@@ -207,10 +207,11 @@
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  filter: blur(1px);
-  will-change: background, opacity;
+  /* Performance optimizations */
+  will-change: transform;
+  transform: translateZ(0); /* Force hardware acceleration */
   opacity: 0;
-  transition: opacity 150ms ease, background 80ms linear;
+  transition: opacity 180ms ease;
 }
 .aa-spotlight:hover::before,
 .aa-spotlight:focus-visible::before {

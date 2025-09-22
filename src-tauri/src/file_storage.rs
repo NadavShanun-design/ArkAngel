@@ -16,6 +16,8 @@ pub struct FileInfo {
     pub is_context_enabled: bool,      // Toggle for LLM context
     #[serde(default)]
     pub summary: String,               // Brief summary for prompts
+    #[serde(default)]
+    pub conversation_id: Option<String>, // Optional associated conversation id
 }
 
 pub struct FileStorage {
@@ -25,12 +27,42 @@ pub struct FileStorage {
 
 impl FileStorage {
     pub fn new() -> Result<Self> {
-        // Get the project root directory (one level up from src-tauri)
-        let project_root = std::env::current_dir()?
-            .parent()
-            .ok_or_else(|| anyhow!("Failed to get project root"))?
-            .to_path_buf();
-        
+        // Determine a stable project root so we point at the same uploads dir as the Node sidecar
+        fn candidates() -> Vec<PathBuf> {
+            let mut v: Vec<PathBuf> = Vec::new();
+            // Highest precedence: explicit override
+            if let Ok(dir) = std::env::var("ARKANGEL_PROJECT_ROOT") {
+                v.push(PathBuf::from(dir));
+            }
+            // Try compile-time src-tauri path parent (dev builds)
+            let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            if let Some(p) = manifest_dir.parent() { v.push(p.to_path_buf()); }
+            // Current dir and its parents
+            if let Ok(cd) = std::env::current_dir() {
+                v.push(cd.clone());
+                if let Some(p) = cd.parent() { v.push(p.to_path_buf()); }
+                if let Some(pp) = cd.parent().and_then(|p| p.parent()) { v.push(pp.to_path_buf()); }
+            }
+            // Around the executable path (packaged builds)
+            if let Ok(exe) = std::env::current_exe() {
+                let mut p = exe.parent();
+                for _ in 0..5 {
+                    if let Some(pp) = p { v.push(pp.to_path_buf()); p = pp.parent(); } else { break; }
+                }
+            }
+            v
+        }
+
+        let mut chosen_root: Option<PathBuf> = None;
+        for base in candidates() {
+            // Choose a directory that already contains expected repo markers or uploads
+            if base.join("uploads").exists() || base.join("sidecar").exists() || base.join("src-tauri").exists() {
+                chosen_root = Some(base);
+                break;
+            }
+        }
+        let project_root = chosen_root.unwrap_or_else(|| PathBuf::from("."));
+
         let uploads_dir = project_root.join("uploads");
         let index_path = uploads_dir.join("index.json");
         
@@ -73,6 +105,7 @@ impl FileStorage {
             content,
             is_context_enabled: true, // Default to enabled
             summary,
+            conversation_id: None,
         };
         
         // 7. Save to JSON index
@@ -186,28 +219,98 @@ impl FileStorage {
     }
     
     pub fn delete_file(&self, file_id: &str) -> Result<()> {
+        println!("[FileStorage] Attempting to delete file: {}", file_id);
         let mut files = self.list_files()?;
+        println!("[FileStorage] Current file count: {}", files.len());
         
         // Find and remove the file
         if let Some(index) = files.iter().position(|f| f.id == file_id) {
+            println!("[FileStorage] Found file at index: {}", index);
+            
             // Remove the file from filesystem
             let file_path = self.uploads_dir.join(file_id);
+            println!("[FileStorage] Attempting to delete file at path: {:?}", file_path);
+            
             if file_path.exists() {
-                fs::remove_file(&file_path)?;
+                fs::remove_file(&file_path)
+                    .map_err(|e| anyhow!("Failed to remove file from filesystem: {}", e))?;
+                println!("[FileStorage] Successfully removed file from filesystem");
+            } else {
+                println!("[FileStorage] Warning: File not found on filesystem: {:?}", file_path);
             }
             
             // Remove from index
             files.remove(index);
             self.save_index(&files)?;
+            println!("[FileStorage] Successfully removed file from index. New count: {}", files.len());
+        } else {
+            println!("[FileStorage] Error: File with ID {} not found in index", file_id);
+            return Err(anyhow!("File not found: {}", file_id));
         }
         
         Ok(())
     }
 
+    /// Delete all files associated with a conversation id. Returns number deleted.
+    pub fn delete_files_by_conversation(&self, conversation_id: &str) -> Result<usize> {
+        let mut files = self.list_files()?;
+
+        // Determine which files to delete
+        let to_delete: Vec<FileInfo> = files
+            .iter()
+            .cloned()
+            .filter(|f| f.conversation_id.as_deref() == Some(conversation_id))
+            .collect();
+
+        // Remove files from filesystem
+        for f in &to_delete {
+            let file_path = self.uploads_dir.join(&f.id);
+            if file_path.exists() {
+                let _ = fs::remove_file(&file_path);
+            }
+        }
+
+        // Keep only remaining files in index
+        files.retain(|f| f.conversation_id.as_deref() != Some(conversation_id));
+        self.save_index(&files)?;
+
+        Ok(to_delete.len())
+    }
+
+    /// Count files associated with a conversation id.
+    pub fn count_files_by_conversation(&self, conversation_id: &str) -> Result<usize> {
+        let files = self.list_files()?;
+        Ok(files
+            .iter()
+            .filter(|f| f.conversation_id.as_deref() == Some(conversation_id))
+            .count())
+    }
+
+    /// Link all currently context-enabled files to a conversation id. Returns number updated.
+    pub fn link_enabled_files_to_conversation(&self, conversation_id: &str) -> Result<usize> {
+        let mut files = self.list_files()?;
+        let mut updated = 0usize;
+        for f in files.iter_mut() {
+            if f.is_context_enabled {
+                if f.conversation_id.as_deref() != Some(conversation_id) {
+                    f.conversation_id = Some(conversation_id.to_string());
+                    updated += 1;
+                }
+            }
+        }
+        if updated > 0 {
+            self.save_index(&files)?;
+        }
+        Ok(updated)
+    }
+
     /// Delete all uploaded files and clear the index
     pub fn wipe_all(&self) -> Result<()> {
+        println!("[FileStorage] Starting wipe_all operation");
+        
         // Remove all files in uploads_dir except the index.json itself
         if self.uploads_dir.exists() {
+            let mut deleted_count = 0;
             for entry in fs::read_dir(&self.uploads_dir)? {
                 let entry = entry?;
                 let path = entry.path();
@@ -216,13 +319,24 @@ impl FileStorage {
                     if path.file_name().and_then(|n| n.to_str()) == Some("index.json") {
                         continue;
                     }
-                    let _ = fs::remove_file(&path);
+                    match fs::remove_file(&path) {
+                        Ok(_) => {
+                            deleted_count += 1;
+                            println!("[FileStorage] Deleted file: {:?}", path);
+                        }
+                        Err(e) => {
+                            println!("[FileStorage] Failed to delete file {:?}: {}", path, e);
+                        }
+                    }
                 }
             }
+            println!("[FileStorage] Deleted {} files from filesystem", deleted_count);
         }
 
         // Clear index.json to an empty array
-        self.save_index(&[])
+        self.save_index(&[])?;
+        println!("[FileStorage] Cleared file index");
+        Ok(())
     }
     
     pub fn toggle_context(&self, file_id: &str) -> Result<FileInfo> {

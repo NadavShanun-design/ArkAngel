@@ -93,11 +93,13 @@ function Button({
       )}
       onMouseMove={(e: React.MouseEvent<HTMLElement>) => {
         handleMouseMove(e);
-        onMouseMove?.(e);
+        // Adapt event type for external handler expecting HTMLButtonElement
+        onMouseMove?.(e as unknown as React.MouseEvent<HTMLButtonElement>);
       }}
       onMouseLeave={(e: React.MouseEvent<HTMLElement>) => {
         handleMouseLeave(e);
-        onMouseLeave?.(e);
+        // Adapt event type for external handler expecting HTMLButtonElement
+        onMouseLeave?.(e as unknown as React.MouseEvent<HTMLButtonElement>);
       }}
       {...props}
     />

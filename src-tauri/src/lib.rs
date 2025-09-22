@@ -129,11 +129,37 @@ async fn wipe_uploaded_files() -> Result<(), String> {
     .map_err(|e| format!("Failed to wipe uploaded files: {}", e))
 }
 
+// Conversation-linked uploads management
+#[tauri::command]
+async fn delete_files_by_conversation(conversation_id: String) -> Result<usize, String> {
+  let storage = file_storage::FileStorage::new()
+    .map_err(|e| format!("Failed to initialize file storage: {}", e))?;
+  storage.delete_files_by_conversation(&conversation_id)
+    .map_err(|e| format!("Failed to delete files for conversation: {}", e))
+}
+
+#[tauri::command]
+async fn count_files_by_conversation(conversation_id: String) -> Result<usize, String> {
+  let storage = file_storage::FileStorage::new()
+    .map_err(|e| format!("Failed to initialize file storage: {}", e))?;
+  storage.count_files_by_conversation(&conversation_id)
+    .map_err(|e| format!("Failed to count files for conversation: {}", e))
+}
+
+#[tauri::command]
+async fn link_enabled_files_to_conversation(conversation_id: String) -> Result<usize, String> {
+  let storage = file_storage::FileStorage::new()
+    .map_err(|e| format!("Failed to initialize file storage: {}", e))?;
+  storage.link_enabled_files_to_conversation(&conversation_id)
+    .map_err(|e| format!("Failed to link files to conversation: {}", e))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             greet, 
             get_app_version,
@@ -149,6 +175,9 @@ pub fn run() {
             toggle_file_context,
             get_file_context,
             wipe_uploaded_files,
+      delete_files_by_conversation,
+      count_files_by_conversation,
+      link_enabled_files_to_conversation,
         ])
         .setup(|app| {
             // Make a shared place to store the sidecar child

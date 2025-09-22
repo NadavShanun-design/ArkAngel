@@ -14,19 +14,34 @@ export function SpotlightArea<T extends ElementTag = "div">(
 ) {
   const { as, className, active = true, onMouseMove, onMouseLeave, children, ...rest } = props as SpotlightAreaProps & { children?: React.ReactNode };
   const Tag = (as || "div") as any;
+  const rafIdRef = React.useRef<number | null>(null);
 
   const handleMouseMove = (e: MouseEvent<HTMLElement>) => {
     if (!active) return;
-    const el = e.currentTarget as HTMLElement;
-    const rect = el.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    el.style.setProperty("--spot-x", `${x}px`);
-    el.style.setProperty("--spot-y", `${y}px`);
+    
+    // Throttle with requestAnimationFrame for smooth performance
+    if (rafIdRef.current !== null) return;
+    
+    rafIdRef.current = requestAnimationFrame(() => {
+      const el = e.currentTarget as HTMLElement;
+      const rect = el.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      el.style.setProperty("--spot-x", `${x}px`);
+      el.style.setProperty("--spot-y", `${y}px`);
+      rafIdRef.current = null;
+    });
   };
 
   const handleMouseLeave = (e: MouseEvent<HTMLElement>) => {
     if (!active) return;
+    
+    // Cancel pending animation frame
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    
     const el = e.currentTarget as HTMLElement;
     el.style.removeProperty("--spot-x");
     el.style.removeProperty("--spot-y");
