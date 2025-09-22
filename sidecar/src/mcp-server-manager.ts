@@ -1,5 +1,7 @@
 import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
 import http from 'http'
+import path from 'path'
+import os from 'os'
 
 export class MCPServerManager {
   private static instance: MCPServerManager
@@ -18,14 +20,16 @@ export class MCPServerManager {
   async start(): Promise<void> {
     if (this.isRunning()) return
 
-    const appData = process.env.APPDATA || process.env.HOME || process.cwd()
-    const credsDir = `${appData.replace(/\\$/, '')}\\ArkAngel\\google_oauth\\credentials`
+    // Cross-platform credentials directory
+    const homeDir = os.homedir()
+    const baseDir = process.platform === 'win32' ? (process.env.APPDATA || homeDir) : homeDir
+    const credsDir = path.join(baseDir, 'ArkAngel', 'google_oauth', 'credentials')
 
     const env = {
       ...process.env,
       // Use the exact environment variable names from the reference repo
-      GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID || '
-      GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET || '
+      GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID ?? '',
+      GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? '',
       GOOGLE_MCP_CREDENTIALS_DIR: process.env.GOOGLE_MCP_CREDENTIALS_DIR || credsDir,
       LOG_LEVEL: process.env.LOG_LEVEL || 'DEBUG',
       // Dev only; production should use HTTPS
@@ -38,15 +42,12 @@ export class MCPServerManager {
     }
 
     console.log('[MCPServerManager] Spawning workspace-mcp (HTTP)...')
+    const mask = (v?: string) => (v && v.length > 8 ? `${v.slice(0, 4)}...${v.slice(-4)}` : (v ? '(set)' : '(unset)'))
     console.log('[MCPServerManager] Environment:', {
-      GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID || '
-      GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET || '
+      GOOGLE_OAUTH_CLIENT_ID: mask(process.env.GOOGLE_OAUTH_CLIENT_ID),
+      GOOGLE_OAUTH_CLIENT_SECRET: mask(process.env.GOOGLE_OAUTH_CLIENT_SECRET),
       GOOGLE_MCP_CREDENTIALS_DIR: env.GOOGLE_MCP_CREDENTIALS_DIR,
       MCP_ENABLE_OAUTH21: env.MCP_ENABLE_OAUTH21
-    })
-    console.log('[MCPServerManager] Full environment variables:', {
-      GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID || '
-      GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET || '
     })
     
     const args = ['workspace-mcp', '--transport', 'streamable-http', '--tool-tier', 'complete']

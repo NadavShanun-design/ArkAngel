@@ -62,7 +62,7 @@ export class GoogleWorkspaceMCP {
 
     // Create MCP agent with proper configuration and system prompt
     const agent = new MCPAgent({ 
-      llm, 
+      llm: llm as any, 
       client, 
       maxSteps: 20, // Increased for proper tool execution
       verbose: true, // Enable verbose logging
@@ -464,10 +464,10 @@ Always use the tools when appropriate to provide accurate, up-to-date informatio
       
       // Extract the authorization URL from any available text
       const serialized = typeof result === 'string' ? result : JSON.stringify(result)
-      const authUrlMatch = serialized.match(/https:\/\/accounts\.google\.com\/[^"]+/)
+      const authUrlMatch = serialized.match(/https:\/\/accounts\.google\.com\/[^"]/)
       
       if (authUrlMatch) {
-        const authUrl = authUrlMatch[1]
+        const authUrl = authUrlMatch[0]
         console.log('[GoogleWorkspaceMCP] ✅ Extracted auth URL:', authUrl)
         console.log('[GoogleWorkspaceMCP] 🌐 Opening browser for OAuth authentication...')
         
@@ -487,7 +487,7 @@ Always use the tools when appropriate to provide accurate, up-to-date informatio
         }
       } else {
         console.log('[GoogleWorkspaceMCP] ⚠️ Could not extract auth URL from result')
-        return `OAuth flow initiated! Please check the result: ${authMessage}`
+        return `OAuth flow initiated! Could not extract authorization URL. Raw result preview: ${serialized.substring(0, 500)}`
       }
     } catch (e: any) {
       console.error('[GoogleWorkspaceMCP] startGoogleOAuth error:', e)
