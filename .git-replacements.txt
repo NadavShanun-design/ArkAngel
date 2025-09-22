@@ -1,0 +1,4 @@
+regex:[0-9A-Za-z\-\._]+\.apps\.googleusercontent\.com
+REDACTED_CLIENT_ID
+regex:GOCSPX-[A-Za-z0-9\-_]+
+REDACTED_CLIENT_SECRET
