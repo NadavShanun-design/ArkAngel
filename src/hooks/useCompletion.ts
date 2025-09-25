@@ -6,6 +6,7 @@ import {
   getConversation,
   generateConversationTitle,
 } from "@/lib";
+import { getActivePersona } from "@/lib/personas";
 import {
   AttachedFile,
   CompletionState,
@@ -121,15 +122,18 @@ export const useCompletion = () => {
 
         const url = "http://127.0.0.1:8765/api/chat/stream";
         console.log("[ui] Connecting to sidecar:", url);
+        const settings = getSettings();
+        const activePersona = getActivePersona(settings);
+        const effectiveSystemPrompt = activePersona?.prompt || settings?.systemPrompt;
         const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             message: input,
-            systemPrompt: getSettings()?.systemPrompt,
-            apiKey: getSettings()?.openAiApiKey || getSettings()?.apiKey || undefined,
-            model: getSettings()?.selectedModel || getSettings()?.customModel || "gpt-4o-mini",
-            providerId: getSettings()?.selectedProvider || "openai",
+            systemPrompt: effectiveSystemPrompt,
+            apiKey: settings?.openAiApiKey || settings?.apiKey || undefined,
+            model: settings?.selectedModel || settings?.customModel || "gpt-4o-mini",
+            providerId: settings?.selectedProvider || "openai",
             fileSummaries,
             // Note: files are summarized up-front and included in the system prompt.
           }),

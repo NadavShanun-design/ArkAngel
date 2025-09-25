@@ -7,7 +7,6 @@ import { ThemeToggle } from "./ThemeToggle";
 import { ApiKeyInput } from "./ApiKeyInput";
 import { ModelSelection } from "./ModelSelection";
 import { Disclaimer } from "./Disclaimer";
-import { SystemPrompt } from "./SystemPrompt";
 import { Speech } from "./Speech";
 import { FileUploadSettings } from "./FileUploadSettings";
 import {
@@ -299,11 +298,36 @@ export const Settings: React.FC<SettingsProps> = ({ onOpenIntegrations }) => {
                 />
               )}
 
-            {/* System Prompt */}
-            <SystemPrompt
-              value={settings.systemPrompt}
-              onChange={(value) => updateSettings({ systemPrompt: value })}
-            />
+            {/* Angel Persona (readonly summary) */}
+            {settings.personas && settings.personas.length > 0 && (
+              <SpotlightArea className="p-3 rounded-md border border-input/50 bg-background/50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium">Angel Persona</div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsPopoverOpen(false);
+                      // open advanced settings anchored to angel profiles
+                      const url = `${window.location.origin}/settings`;
+                      openExternalUrl(url).catch(() => window.open(url, '_blank'));
+                    }}
+                  >
+                    Manage
+                  </Button>
+                </div>
+                {(() => {
+                  const active = settings.personas?.find(p => p.id === settings.currentPersonaId) || settings.personas[0];
+                  return (
+                    <div className="text-xs text-muted-foreground leading-relaxed">
+                      <div className="font-semibold text-foreground mb-1">{active?.name}</div>
+                      <p className="line-clamp-3">{active?.summary || 'No summary available.'}</p>
+                    </div>
+                  );
+                })()}
+              </SpotlightArea>
+            )}
 
             {/* File Upload Settings */}
             <FileUploadSettings />

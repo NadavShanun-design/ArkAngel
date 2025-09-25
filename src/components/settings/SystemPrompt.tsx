@@ -1,3 +1,5 @@
+// Deprecated: Replaced by Angel Personas feature.
+// Keeping component temporarily for backward compatibility; not rendered anymore.
 import { Label, Textarea } from "@/components";
 
 interface SystemPromptProps {

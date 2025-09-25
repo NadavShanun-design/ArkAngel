@@ -1,5 +1,6 @@
 import { SettingsState, ChatConversation, CustomProvider } from "@/types";
 import { STORAGE_KEYS, DEFAULT_SYSTEM_PROMPT } from "@/config";
+import { migrateSettingsToPersonas, getActivePersona } from "@/lib/personas";
 
 const defaultSettings: SettingsState = {
   selectedProvider: "",
@@ -13,13 +14,23 @@ const defaultSettings: SettingsState = {
   modelsFetchError: null,
   openAiApiKey: "",
   isOpenAiApiKeySubmitted: false,
+  personas: undefined,
+  currentPersonaId: undefined,
 };
 
 export const loadSettingsFromStorage = (): SettingsState => {
   try {
     const stored = localStorage.getItem(STORAGE_KEYS.SETTINGS);
     if (stored) {
-      return { ...defaultSettings, ...JSON.parse(stored) };
+      const parsed = { ...defaultSettings, ...JSON.parse(stored) } as SettingsState;
+      // Migrate to personas if needed
+      const migrated = migrateSettingsToPersonas(parsed);
+      // Always ensure systemPrompt mirrors active persona prompt for backward compatibility
+      const active = getActivePersona(migrated);
+      if (active && migrated.systemPrompt !== active.prompt) {
+        migrated.systemPrompt = active.prompt;
+      }
+      return migrated;
     }
   } catch (error) {
     console.error("Failed to load settings from localStorage:", error);

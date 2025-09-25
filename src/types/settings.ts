@@ -50,6 +50,20 @@ export interface SettingsState {
   modelsFetchError: string | null;
   openAiApiKey: string;
   isOpenAiApiKeySubmitted: boolean;
+  // Angel Personas
+  personas?: Persona[]; // optional for backward compatibility (migrated on load)
+  currentPersonaId?: string; // id of active persona
+}
+
+// Angel Persona definition
+export interface Persona {
+  id: string; // uuid or nano id
+  name: string;
+  prompt: string; // full system prompt text
+  summary: string; // 1-2 sentence summary auto-generated
+  createdAt: number;
+  updatedAt: number;
+  isDefault?: boolean; // flag for built-in personas (immutable name unless duplicated)
 }
 
 export interface ModelSelectionProps {
