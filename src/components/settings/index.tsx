@@ -7,7 +7,6 @@ import { ThemeToggle } from "./ThemeToggle";
 import { ApiKeyInput } from "./ApiKeyInput";
 import { ModelSelection } from "./ModelSelection";
 import { Disclaimer } from "./Disclaimer";
-import { SystemPrompt } from "./SystemPrompt";
 import { Speech } from "./Speech";
 import { FileUploadSettings } from "./FileUploadSettings";
 import {
@@ -16,6 +15,7 @@ import {
   fetchModels,
   getProviderById,
 } from "@/lib";
+import { findPersonaById } from "@/lib/personas";
 import { SettingsState } from "@/types";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl as openExternalUrl } from "@tauri-apps/plugin-opener";
@@ -299,11 +299,47 @@ export const Settings: React.FC<SettingsProps> = ({ onOpenIntegrations }) => {
                 />
               )}
 
-            {/* System Prompt */}
-            <SystemPrompt
-              value={settings.systemPrompt}
-              onChange={(value) => updateSettings({ systemPrompt: value })}
-            />
+            {/* Angel Persona */}
+            <div className="space-y-2">
+              <div>
+                <label className="text-sm font-semibold">Angel Persona</label>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Current AI personality and behavior style.
+                </p>
+              </div>
+              <SpotlightArea className="p-3 rounded-md border border-input/50 bg-background/50">
+                {(() => {
+                  const activePersona = findPersonaById(settings.personas || [], settings.currentPersonaId || "");
+                  if (!activePersona) {
+                    return (
+                      <div className="text-sm text-muted-foreground">
+                        No persona selected
+                      </div>
+                    );
+                  }
+                  return (
+                    <div>
+                      <div className="font-medium text-sm mb-1">{activePersona.name}</div>
+                      <div className="text-xs text-muted-foreground mb-2">
+                        {activePersona.summary}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={(e) => { 
+                          e.preventDefault(); 
+                          setIsPopoverOpen(false); 
+                          openAdvancedInBrowser();
+                        }}
+                        className="text-xs"
+                      >
+                        Manage Personas
+                      </Button>
+                    </div>
+                  );
+                })()}
+              </SpotlightArea>
+            </div>
 
             {/* File Upload Settings */}
             <FileUploadSettings />

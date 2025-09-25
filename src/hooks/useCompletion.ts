@@ -121,12 +121,18 @@ export const useCompletion = () => {
 
         const url = "http://127.0.0.1:8765/api/chat/stream";
         console.log("[ui] Connecting to sidecar:", url);
+        
+        // Get active persona prompt
+        const settings = getSettings();
+        const activePersona = settings?.personas?.find((p: any) => p.id === settings?.currentPersonaId);
+        const systemPrompt = activePersona?.prompt || settings?.systemPrompt || undefined;
+        
         const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             message: input,
-            systemPrompt: getSettings()?.systemPrompt,
+            systemPrompt,
             apiKey: getSettings()?.openAiApiKey || getSettings()?.apiKey || undefined,
             model: getSettings()?.selectedModel || getSettings()?.customModel || "gpt-4o-mini",
             providerId: getSettings()?.selectedProvider || "openai",

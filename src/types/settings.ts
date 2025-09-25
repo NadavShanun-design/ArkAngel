@@ -37,6 +37,15 @@ export interface CustomProvider {
   imageExampleStructure?: string;
 }
 
+// Persona types
+export interface Persona {
+  id: string;
+  name: string;
+  prompt: string;
+  summary: string;
+  isDefault?: boolean;
+}
+
 // Settings-related types
 export interface SettingsState {
   selectedProvider: string;
@@ -50,6 +59,9 @@ export interface SettingsState {
   modelsFetchError: string | null;
   openAiApiKey: string;
   isOpenAiApiKeySubmitted: boolean;
+  // Angel Profiles
+  personas: Persona[];
+  currentPersonaId: string;
 }
 
 export interface ModelSelectionProps {

@@ -1,5 +1,6 @@
 import { SettingsState, ChatConversation, CustomProvider } from "@/types";
 import { STORAGE_KEYS, DEFAULT_SYSTEM_PROMPT } from "@/config";
+import { migrateToPersonas } from "./personas";
 
 const defaultSettings: SettingsState = {
   selectedProvider: "",
@@ -13,22 +14,51 @@ const defaultSettings: SettingsState = {
   modelsFetchError: null,
   openAiApiKey: "",
   isOpenAiApiKeySubmitted: false,
+  personas: [],
+  currentPersonaId: "",
 };
 
 export const loadSettingsFromStorage = (): SettingsState => {
   try {
     const stored = localStorage.getItem(STORAGE_KEYS.SETTINGS);
     if (stored) {
-      return { ...defaultSettings, ...JSON.parse(stored) };
+      const parsedSettings = { ...defaultSettings, ...JSON.parse(stored) };
+      
+      // Migrate to personas system if needed
+      if (!parsedSettings.personas || parsedSettings.personas.length === 0) {
+        const { personas, currentPersonaId } = migrateToPersonas(parsedSettings.systemPrompt);
+        parsedSettings.personas = personas;
+        parsedSettings.currentPersonaId = currentPersonaId;
+        
+        // Save the migrated settings immediately
+        saveSettingsToStorage(parsedSettings);
+      }
+      
+      return parsedSettings;
     }
   } catch (error) {
     console.error("Failed to load settings from localStorage:", error);
   }
-  return defaultSettings;
+  
+  // Create default with personas
+  const { personas, currentPersonaId } = migrateToPersonas(DEFAULT_SYSTEM_PROMPT);
+  const settingsWithPersonas = {
+    ...defaultSettings,
+    personas,
+    currentPersonaId,
+  };
+  saveSettingsToStorage(settingsWithPersonas);
+  return settingsWithPersonas;
 };
 
 export const saveSettingsToStorage = (settings: SettingsState) => {
   try {
+    // Sync systemPrompt with active persona for backward compatibility
+    const activePersona = settings.personas?.find(p => p.id === settings.currentPersonaId);
+    if (activePersona) {
+      settings.systemPrompt = activePersona.prompt;
+    }
+    
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   } catch (error) {
     console.error("Failed to save settings to localStorage:", error);

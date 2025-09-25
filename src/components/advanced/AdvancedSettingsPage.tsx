@@ -1,15 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Button, ScrollArea, SpotlightArea } from "@/components";
+import { Button, ScrollArea, SpotlightArea, Input, Textarea, Label } from "@/components";
 // Theme changes (light/dark/system) are handled here directly for the website
 import { useTheme } from "@/theme-provider";
 import { getAvailableIntegrations, Integration } from "@/components/integrations/integrationDefinitions";
-import { loadChatHistory, clearChatHistory } from "@/lib/storage";
+import { loadChatHistory, clearChatHistory, loadSettingsFromStorage, saveSettingsToStorage } from "@/lib/storage";
+import { createPersona, updatePersona, deletePersona } from "@/lib/personas";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Settings, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, Trash2, Plus, Edit2, Check, X, Star } from "lucide-react";
 import { STORAGE_KEYS } from "@/config";
+import { Persona, SettingsState } from "@/types";
 
 type SectionKey =
   | "profile"
+  | "angel-profiles"
   | "notifications"
   | "actions"
   | "design"
@@ -19,6 +22,7 @@ type SectionKey =
 
 const sections: { key: SectionKey; label: string }[] = [
   { key: "profile", label: "Profile" },
+  { key: "angel-profiles", label: "Angel Profiles" },
   { key: "notifications", label: "Notifications" },
   { key: "actions", label: "Actions" },
   { key: "design", label: "Design" },
@@ -75,6 +79,7 @@ export const AdvancedSettingsPage: React.FC = () => {
         <ScrollArea className="flex-1">
           <div className="p-6">
             {active === "profile" && <ProfileSection />}
+            {active === "angel-profiles" && <AngelProfilesSection />}
             {active === "notifications" && <NotificationsSection />}
             {active === "actions" && <ActionsSection />}
             {active === "design" && <DesignSection />}
@@ -89,6 +94,250 @@ export const AdvancedSettingsPage: React.FC = () => {
 };
 
 // Sections
+const AngelProfilesSection: React.FC = () => {
+  const [settings, setSettings] = useState<SettingsState>(loadSettingsFromStorage);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [editingPrompt, setEditingPrompt] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newPrompt, setNewPrompt] = useState("");
+
+  const updateSettings = (updates: Partial<SettingsState>) => {
+    const newSettings = { ...settings, ...updates };
+    setSettings(newSettings);
+    saveSettingsToStorage(newSettings);
+  };
+
+  const handleActivatePersona = (personaId: string) => {
+    updateSettings({ currentPersonaId: personaId });
+  };
+
+  const handleStartEdit = (persona: Persona) => {
+    setEditingId(persona.id);
+    setEditingName(persona.name);
+    setEditingPrompt(persona.prompt);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingId) return;
+    
+    const updatedPersonas = settings.personas.map(p => 
+      p.id === editingId ? updatePersona(p, { name: editingName, prompt: editingPrompt }) : p
+    );
+    
+    updateSettings({ personas: updatedPersonas });
+    setEditingId(null);
+    setEditingName("");
+    setEditingPrompt("");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditingName("");
+    setEditingPrompt("");
+  };
+
+  const handleDeletePersona = (personaId: string) => {
+    if (settings.personas.find(p => p.id === personaId)?.isDefault) {
+      return; // Don't delete default personas
+    }
+    
+    const updatedPersonas = deletePersona(settings.personas, personaId);
+    let newCurrentId = settings.currentPersonaId;
+    
+    // If we're deleting the current persona, switch to the first available one
+    if (settings.currentPersonaId === personaId) {
+      newCurrentId = updatedPersonas[0]?.id || "assistant";
+    }
+    
+    updateSettings({ 
+      personas: updatedPersonas,
+      currentPersonaId: newCurrentId
+    });
+  };
+
+  const handleStartCreate = () => {
+    setIsCreating(true);
+    setNewName("");
+    setNewPrompt("");
+  };
+
+  const handleSaveCreate = () => {
+    if (!newName.trim() || !newPrompt.trim()) return;
+    
+    const newPersona = createPersona(newName, newPrompt);
+    const updatedPersonas = [...settings.personas, newPersona];
+    
+    updateSettings({ personas: updatedPersonas });
+    setIsCreating(false);
+    setNewName("");
+    setNewPrompt("");
+  };
+
+  const handleCancelCreate = () => {
+    setIsCreating(false);
+    setNewName("");
+    setNewPrompt("");
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Angel Profiles</h2>
+          <p className="text-sm text-muted-foreground">
+            Manage different AI personas with unique behaviors and specialties.
+          </p>
+        </div>
+        <Button onClick={handleStartCreate} size="sm">
+          <Plus className="w-4 h-4 mr-1" />
+          Create Persona
+        </Button>
+      </div>
+
+      {/* Create new persona form */}
+      {isCreating && (
+        <SpotlightArea className="p-4 border border-input/50 rounded-md bg-background/50">
+          <div className="space-y-3">
+            <div>
+              <Label className="text-sm font-medium">Name</Label>
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="e.g., Creative Writer"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Prompt</Label>
+              <Textarea
+                value={newPrompt}
+                onChange={(e) => setNewPrompt(e.target.value)}
+                placeholder="Describe the persona's role, expertise, and behavior..."
+                className="mt-1 min-h-[80px]"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button onClick={handleSaveCreate} size="sm" disabled={!newName.trim() || !newPrompt.trim()}>
+                <Check className="w-4 h-4 mr-1" />
+                Create
+              </Button>
+              <Button onClick={handleCancelCreate} size="sm" variant="secondary">
+                <X className="w-4 h-4 mr-1" />
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </SpotlightArea>
+      )}
+
+      {/* Existing personas */}
+      <div className="grid grid-cols-1 gap-3">
+        {settings.personas.map((persona) => (
+          <SpotlightArea 
+            key={persona.id}
+            className={cn(
+              "p-4 border rounded-md bg-background/50 transition-colors",
+              settings.currentPersonaId === persona.id 
+                ? "border-primary bg-primary/5" 
+                : "border-input/50"
+            )}
+          >
+            {editingId === persona.id ? (
+              // Edit mode
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-sm font-medium">Name</Label>
+                  <Input
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Prompt</Label>
+                  <Textarea
+                    value={editingPrompt}
+                    onChange={(e) => setEditingPrompt(e.target.value)}
+                    className="mt-1 min-h-[80px]"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button onClick={handleSaveEdit} size="sm">
+                    <Check className="w-4 h-4 mr-1" />
+                    Save
+                  </Button>
+                  <Button onClick={handleCancelEdit} size="sm" variant="secondary">
+                    <X className="w-4 h-4 mr-1" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              // View mode
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-medium text-sm flex items-center gap-2">
+                      {persona.name}
+                      {persona.isDefault && <Star className="w-3 h-3 text-amber-500" />}
+                      {settings.currentPersonaId === persona.id && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-primary text-primary-foreground">
+                          Active
+                        </span>
+                      )}
+                    </h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {persona.summary}
+                  </p>
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                      View prompt
+                    </summary>
+                    <div className="mt-2 p-2 bg-muted/50 rounded text-muted-foreground whitespace-pre-wrap text-xs">
+                      {persona.prompt}
+                    </div>
+                  </details>
+                </div>
+                <div className="flex items-center gap-1">
+                  {settings.currentPersonaId !== persona.id && (
+                    <Button
+                      onClick={() => handleActivatePersona(persona.id)}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      Activate
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => handleStartEdit(persona)}
+                    size="sm"
+                    variant="ghost"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  {!persona.isDefault && (
+                    <Button
+                      onClick={() => handleDeletePersona(persona.id)}
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </SpotlightArea>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const ProfileSection: React.FC = () => {
   return (
     <div className="space-y-4">
