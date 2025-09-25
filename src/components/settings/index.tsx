@@ -7,7 +7,8 @@ import { ThemeToggle } from "./ThemeToggle";
 import { ApiKeyInput } from "./ApiKeyInput";
 import { ModelSelection } from "./ModelSelection";
 import { Disclaimer } from "./Disclaimer";
-import { SystemPrompt } from "./SystemPrompt";
+import { SystemPrompt } from "./SystemPrompt"; // deprecated
+import { getActivePersona } from "@/lib/personas";
 import { Speech } from "./Speech";
 import { FileUploadSettings } from "./FileUploadSettings";
 import {
@@ -299,11 +300,39 @@ export const Settings: React.FC<SettingsProps> = ({ onOpenIntegrations }) => {
                 />
               )}
 
-            {/* System Prompt */}
-            <SystemPrompt
-              value={settings.systemPrompt}
-              onChange={(value) => updateSettings({ systemPrompt: value })}
-            />
+            {/* Angel Persona Summary */}
+            {settings.personas && settings.personas.length > 0 && (
+              <SpotlightArea className="p-3 rounded-md border border-input/50 bg-background/50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium">Angel Persona</div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsPopoverOpen(false);
+                      openAdvancedInBrowser();
+                    }}
+                  >Manage</Button>
+                </div>
+                {(() => {
+                  const active = getActivePersona(settings) ?? settings.personas?.[0];
+                  if (!active) return null;
+                  return (
+                    <div className="text-xs text-muted-foreground leading-relaxed">
+                      <div className="font-semibold text-foreground mb-1">{active.name}</div>
+                      <p className="line-clamp-3">{active.summary}</p>
+                    </div>
+                  );
+                })()}
+              </SpotlightArea>
+            )}
+            {!settings.personas && (
+              <SystemPrompt
+                value={settings.systemPrompt}
+                onChange={(value) => updateSettings({ systemPrompt: value })}
+              />
+            )}
 
             {/* File Upload Settings */}
             <FileUploadSettings />

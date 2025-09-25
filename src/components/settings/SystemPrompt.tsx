@@ -1,3 +1,7 @@
+// DEPRECATED: This component is retained only for backward compatibility
+// with older settings that used a single systemPrompt string. The new
+// Angel Profiles (personas) system supersedes this. Remove once migration
+// is stable and legacy users have upgraded.
 import { Label, Textarea } from "@/components";
 
 interface SystemPromptProps {

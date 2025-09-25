@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Button, ScrollArea, SpotlightArea } from "@/components";
+import { Button, ScrollArea, SpotlightArea, Input, Textarea } from "@/components";
 // Theme changes (light/dark/system) are handled here directly for the website
 import { useTheme } from "@/theme-provider";
 import { getAvailableIntegrations, Integration } from "@/components/integrations/integrationDefinitions";
-import { loadChatHistory, clearChatHistory } from "@/lib/storage";
+import { loadChatHistory, clearChatHistory, loadSettingsFromStorage, saveSettingsToStorage } from "@/lib/storage";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Settings, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, Trash2, Pencil, Plus, Check, X, Star, Trash } from "lucide-react";
 import { STORAGE_KEYS } from "@/config";
 
 type SectionKey =
@@ -15,7 +15,8 @@ type SectionKey =
   | "design"
   | "integrations"
   | "payments"
-  | "manage-data";
+  | "manage-data"
+  | "angel-profiles";
 
 const sections: { key: SectionKey; label: string }[] = [
   { key: "profile", label: "Profile" },
@@ -25,6 +26,7 @@ const sections: { key: SectionKey; label: string }[] = [
   { key: "integrations", label: "Integrations" },
   { key: "payments", label: "Payments" },
   { key: "manage-data", label: "Manage Data" },
+  { key: "angel-profiles", label: "Angel Profiles" },
 ];
 
 export const AdvancedSettingsPage: React.FC = () => {
@@ -81,6 +83,7 @@ export const AdvancedSettingsPage: React.FC = () => {
             {active === "integrations" && <IntegrationsSection />}
             {active === "payments" && <PaymentsSection />}
             {active === "manage-data" && <ManageDataSection />}
+            {active === "angel-profiles" && <AngelProfilesSection />}
           </div>
         </ScrollArea>
       </main>
@@ -452,3 +455,111 @@ const ManageDataSection: React.FC = () => {
 };
 
 export default AdvancedSettingsPage;
+
+// Personas logic
+import { updatePersona, addPersona, removePersona, summarizePrompt } from "@/lib/personas";
+import { SettingsState, Persona } from "@/types";
+
+const AngelProfilesSection: React.FC = () => {
+  const [settings, setSettings] = useState<SettingsState>(() => loadSettingsFromStorage());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftName, setDraftName] = useState("");
+  const [draftPrompt, setDraftPrompt] = useState("");
+
+
+  const persist = (next: SettingsState) => {
+    setSettings(next);
+    saveSettingsToStorage(next);
+  };
+
+  const startEdit = (p: Persona) => {
+    setEditingId(p.id);
+    setDraftName(p.name);
+    setDraftPrompt(p.prompt);
+  };
+  const cancelEdit = () => { setEditingId(null); setDraftName(""); setDraftPrompt(""); };
+  const saveEdit = () => {
+    if (!editingId || !settings.personas) return;
+    const list = updatePersona(settings.personas, editingId, { name: draftName.trim() || "Untitled", prompt: draftPrompt, summary: summarizePrompt(draftPrompt) });
+    const updated = list.find(p => p.id === editingId)!;
+    const next: SettingsState = { ...settings, personas: list, systemPrompt: settings.currentPersonaId === editingId ? updated.prompt : settings.systemPrompt };
+    persist(next);
+    cancelEdit();
+  };
+  const activate = (id: string) => {
+    const persona = settings.personas?.find(p => p.id === id);
+    if (!persona) return;
+    persist({ ...settings, currentPersonaId: id, systemPrompt: persona.prompt });
+  };
+  const create = () => {
+    const list = addPersona(settings.personas || [], { name: "New Persona", prompt: "Describe this persona's behavior..." });
+    const created = list[list.length - 1];
+    persist({ ...settings, personas: list, currentPersonaId: created.id, systemPrompt: created.prompt });
+    startEdit(created);
+  };
+  const remove = (id: string) => {
+    const target = settings.personas?.find(p => p.id === id);
+    if (!target || target.isDefault) return;
+    const list = removePersona(settings.personas!, id);
+    let currentPersonaId = settings.currentPersonaId;
+    let systemPrompt = settings.systemPrompt;
+    if (currentPersonaId === id) {
+      const fallback = list[0];
+      currentPersonaId = fallback?.id;
+      systemPrompt = fallback?.prompt || systemPrompt;
+    }
+    persist({ ...settings, personas: list, currentPersonaId, systemPrompt });
+  };
+
+  if (!settings.personas) return <div className="text-sm text-muted-foreground">Loading personas…</div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Angel Profiles</h2>
+          <p className="text-xs text-muted-foreground">Select or customize how ArkAngel behaves. Active persona shapes the system prompt.</p>
+        </div>
+        <Button size="sm" variant="secondary" onClick={create}><Plus className="w-4 h-4 mr-1"/>New</Button>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {settings.personas.map(p => {
+          const isActive = p.id === settings.currentPersonaId;
+          const isEditing = p.id === editingId;
+          return (
+            <div key={p.id} className={cn("group relative border rounded-md p-4 bg-background/50 border-input/50 flex flex-col gap-3", isActive && "ring-2 ring-primary/60")}> 
+              <div className="flex items-start justify-between gap-2">
+                {isEditing ? (
+                  <Input value={draftName} onChange={e => setDraftName(e.target.value)} className="h-8 text-sm" />
+                ) : (
+                  <div className="font-medium text-sm flex items-center gap-1">{p.name} {p.isDefault && <Star className="w-3 h-3 text-primary"/>}</div>
+                )}
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {!isEditing && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => activate(p.id)} title="Activate"><Check className="w-4 h-4"/></Button>}
+                  {!isEditing && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEdit(p)} title="Edit"><Pencil className="w-4 h-4"/></Button>}
+                  {!p.isDefault && !isEditing && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(p.id)} title="Delete"><Trash className="w-4 h-4"/></Button>}
+                  {isEditing && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveEdit} title="Save"><Check className="w-4 h-4 text-green-500"/></Button>}
+                  {isEditing && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEdit} title="Cancel"><X className="w-4 h-4 text-red-500"/></Button>}
+                </div>
+              </div>
+              {isEditing ? (
+                <Textarea value={draftPrompt} onChange={e => setDraftPrompt(e.target.value)} className="min-h-[140px] text-xs" />
+              ) : (
+                <p className="text-xs text-muted-foreground line-clamp-5 leading-relaxed whitespace-pre-wrap">{p.prompt}</p>
+              )}
+              {!isEditing && (
+                <div className="mt-auto pt-2 border-t border-input/30 text-[11px] text-muted-foreground leading-snug">
+                  {p.summary}
+                </div>
+              )}
+              {isActive && !isEditing && (
+                <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full shadow">Active</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="text-xs text-muted-foreground/70">Editing a persona regenerates its summary automatically.</div>
+    </div>
+  );
+};

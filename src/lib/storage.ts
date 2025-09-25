@@ -1,5 +1,6 @@
 import { SettingsState, ChatConversation, CustomProvider } from "@/types";
 import { STORAGE_KEYS, DEFAULT_SYSTEM_PROMPT } from "@/config";
+import { migrateSettings, getActivePersona } from "@/lib/personas";
 
 const defaultSettings: SettingsState = {
   selectedProvider: "",
@@ -19,7 +20,13 @@ export const loadSettingsFromStorage = (): SettingsState => {
   try {
     const stored = localStorage.getItem(STORAGE_KEYS.SETTINGS);
     if (stored) {
-      return { ...defaultSettings, ...JSON.parse(stored) };
+      const parsed = { ...defaultSettings, ...JSON.parse(stored) } as SettingsState;
+      const migrated = migrateSettings(parsed);
+      const active = getActivePersona(migrated);
+      if (active && migrated.systemPrompt !== active.prompt) {
+        migrated.systemPrompt = active.prompt;
+      }
+      return migrated;
     }
   } catch (error) {
     console.error("Failed to load settings from localStorage:", error);

@@ -50,6 +50,8 @@ export interface SettingsState {
   modelsFetchError: string | null;
   openAiApiKey: string;
   isOpenAiApiKeySubmitted: boolean;
+  personas?: Persona[]; // optional for backward compatibility
+  currentPersonaId?: string;
 }
 
 export interface ModelSelectionProps {
@@ -62,4 +64,14 @@ export interface ModelSelectionProps {
   availableModels?: string[];
   isLoadingModels?: boolean;
   modelsFetchError?: string | null;
+}
+
+export interface Persona {
+  id: string;
+  name: string;
+  prompt: string;
+  summary: string;
+  createdAt: number;
+  updatedAt: number;
+  isDefault?: boolean;
 }
