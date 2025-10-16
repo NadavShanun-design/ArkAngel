@@ -223,7 +223,7 @@ async fn link_enabled_files_to_conversation(conversation_id: String) -> Result<u
 #[tauri::command]
 async fn open_auth_window(app_handle: tauri::AppHandle) -> Result<(), String> {
     use tauri::{LogicalSize, LogicalPosition, Size, Position};
-    
+
     let auth_window = tauri::WebviewWindowBuilder::new(
         &app_handle,
         "auth",
@@ -256,13 +256,54 @@ async fn close_auth_window(app_handle: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+// Settings window commands
+#[tauri::command]
+async fn open_settings_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    use tauri::{LogicalSize, LogicalPosition, Size, Position};
+
+    // Check if settings window already exists and focus it
+    if let Some(settings_window) = app_handle.get_webview_window("settings") {
+        settings_window.set_focus().map_err(|e| format!("Failed to focus settings window: {}", e))?;
+        return Ok(());
+    }
+
+    let settings_window = tauri::WebviewWindowBuilder::new(
+        &app_handle,
+        "settings",
+        tauri::WebviewUrl::App("/settings".into())
+    )
+    .title("ArkAngel - Advanced Settings")
+    .inner_size(1024.0, 768.0)
+    .min_inner_size(800.0, 600.0)
+    .resizable(true)
+    .decorations(true)
+    .center()
+    .build()
+    .map_err(|e| format!("Failed to create settings window: {}", e))?;
+
+    // Center the window on the screen
+    if let Err(e) = settings_window.center() {
+        eprintln!("Failed to center settings window: {}", e);
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn close_settings_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    if let Some(settings_window) = app_handle.get_webview_window("settings") {
+        settings_window.close().map_err(|e| format!("Failed to close settings window: {}", e))?;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
-            greet, 
+            greet,
             get_app_version,
             set_window_height,
             write_conversation_to_file,
@@ -284,6 +325,8 @@ pub fn run() {
             link_enabled_files_to_conversation,
             open_auth_window,
             close_auth_window,
+            open_settings_window,
+            close_settings_window,
         ])
         .setup(|app| {
             // Make a shared place to store the sidecar child
@@ -398,8 +441,9 @@ pub fn run() {
         .on_window_event(|w, e| {
           if let tauri::WindowEvent::CloseRequested { api, .. } = e {
             // Only prevent close and exit for the main window
-            // Allow auth window and other windows to close normally
-            if w.label() != "auth" {
+            // Allow auth, settings, and other windows to close normally
+            let label = w.label();
+            if label != "auth" && label != "settings" {
               api.prevent_close();
               // Attempt to kill sidecar gently
               let app_handle = w.app_handle();
