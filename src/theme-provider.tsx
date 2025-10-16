@@ -52,12 +52,13 @@ export function ThemeProvider({
     } catch {}
   }, []);
 
-  // Cross-window sync for design settings
+  // Cross-window sync for design settings and theme
   useEffect(() => {
     let ch: BroadcastChannel | null = null;
     const pollIdRef = { current: 0 as number | null };
     let lastAccent = localStorage.getItem(STORAGE_KEYS.DESIGN_ACCENT) || "bw";
     let lastGradient = localStorage.getItem(STORAGE_KEYS.DESIGN_GRADIENT) || "bw";
+    let lastTheme = (localStorage.getItem(storageKey) as Theme) || "system";
     let evtSrc: EventSource | null = null;
     let sseConnected = false;
 
@@ -76,6 +77,12 @@ export function ThemeProvider({
             root.dataset.gradient = e.data.value;
             lastGradient = e.data.value;
           }
+          if (e.data?.type === "theme") {
+            const newTheme = e.data.value as Theme;
+            localStorage.setItem(storageKey, newTheme);
+            setTheme(newTheme);
+            lastTheme = newTheme;
+          }
         } catch {}
       };
     } catch {}
@@ -91,6 +98,11 @@ export function ThemeProvider({
           root.dataset.gradient = ev.newValue;
           lastGradient = ev.newValue;
         }
+        if (ev.key === storageKey && ev.newValue) {
+          const newTheme = ev.newValue as Theme;
+          setTheme(newTheme);
+          lastTheme = newTheme;
+        }
       } catch {}
     };
     window.addEventListener("storage", onStorage);
@@ -102,9 +114,11 @@ export function ThemeProvider({
       try {
         const a = localStorage.getItem(STORAGE_KEYS.DESIGN_ACCENT) || "bw";
         const g = localStorage.getItem(STORAGE_KEYS.DESIGN_GRADIENT) || "bw";
+        const t = (localStorage.getItem(storageKey) as Theme) || "system";
         const root = window.document.documentElement;
         if (a !== lastAccent) { root.dataset.accent = a; lastAccent = a; }
         if (g !== lastGradient) { root.dataset.gradient = g; lastGradient = g; }
+        if (t !== lastTheme) { setTheme(t); lastTheme = t; }
       } catch {}
       }, 1200) as unknown as number;
     };
@@ -128,6 +142,11 @@ export function ThemeProvider({
                 localStorage.setItem(STORAGE_KEYS.DESIGN_GRADIENT, data.gradient);
                 root.dataset.gradient = data.gradient;
                 lastGradient = data.gradient;
+              }
+              if (data.theme && (data.theme === 'light' || data.theme === 'dark' || data.theme === 'system')) {
+                localStorage.setItem(storageKey, data.theme);
+                setTheme(data.theme as Theme);
+                lastTheme = data.theme as Theme;
               }
               if (!sseConnected) {
                 sseConnected = true;

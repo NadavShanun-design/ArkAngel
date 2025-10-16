@@ -511,8 +511,8 @@ const DesignSection: React.FC = () => {
   const [connected, setConnected] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
 
-  const postDesignUpdate = (a: string, g: string) => {
-    const payload = { accent: a, gradient: g } as any;
+  const postDesignUpdate = (a: string, g: string, t: string) => {
+    const payload = { accent: a, gradient: g, theme: t } as any;
     // Attempt both localhost and 127.0.0.1 to maximize success
     const send = (base: string) => fetch(`${base}/design`, {
       method: "POST",
@@ -526,10 +526,10 @@ const DesignSection: React.FC = () => {
   };
 
   // Debounced notifier to avoid bursts
-  const postDesignUpdateDebounced = (a: string, g: string) => {
+  const postDesignUpdateDebounced = (a: string, g: string, t: string) => {
     if (postTimerRef.current) window.clearTimeout(postTimerRef.current);
     postTimerRef.current = window.setTimeout(() => {
-      postDesignUpdate(a, g);
+      postDesignUpdate(a, g, t);
       postTimerRef.current = null;
     }, 100) as unknown as number;
   };
@@ -557,10 +557,16 @@ const DesignSection: React.FC = () => {
     try { channelRef.current?.postMessage({ type: "gradient", value: gradient }); } catch {}
   }, [gradient]);
 
+  useEffect(() => {
+    // Broadcast theme changes to main app
+    localStorage.setItem(STORAGE_KEYS.THEME, theme);
+    try { channelRef.current?.postMessage({ type: "theme", value: theme }); } catch {}
+  }, [theme]);
+
   // Single centralized notifier to sidecar (avoid duplicate POSTs)
   useEffect(() => {
-    postDesignUpdateDebounced(accent, gradient);
-  }, [accent, gradient]);
+    postDesignUpdateDebounced(accent, gradient, theme);
+  }, [accent, gradient, theme]);
 
   const handleSaveToProfile = async () => {
     if (!isAuthenticated || !user) return;

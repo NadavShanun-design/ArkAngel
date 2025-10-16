@@ -102,8 +102,8 @@ type ConversationTurn = {
 }
 
 // ---------------- Design Sync (SSE + POST) ----------------
-type DesignState = { accent: 'bw' | 'rainbow'; gradient: 'bw' | 'rainbow' }
-let designState: DesignState = { accent: 'bw', gradient: 'bw' }
+type DesignState = { accent: 'bw' | 'rainbow'; gradient: 'bw' | 'rainbow'; theme: 'light' | 'dark' | 'system' }
+let designState: DesignState = { accent: 'bw', gradient: 'bw', theme: 'system' }
 
 type SSEClient = { id: number; res: any }
 const sseClients = new Map<number, SSEClient>()
@@ -126,7 +126,7 @@ app.get('/design/events', (req, res) => {
   sseClients.set(id, { id, res })
 
   // Send current state immediately
-  sendSSEEvent({ type: 'state', accent: designState.accent, gradient: designState.gradient })
+  sendSSEEvent({ type: 'state', accent: designState.accent, gradient: designState.gradient, theme: designState.theme })
 
   req.on('close', () => {
     sseClients.delete(id)
@@ -135,7 +135,7 @@ app.get('/design/events', (req, res) => {
 
 app.post('/design', (req, res) => {
   try {
-    const { accent, gradient } = req.body || {}
+    const { accent, gradient, theme } = req.body || {}
     let changed = false
     if (accent === 'bw' || accent === 'rainbow') {
       designState.accent = accent
@@ -145,8 +145,12 @@ app.post('/design', (req, res) => {
       designState.gradient = gradient
       changed = true
     }
+    if (theme === 'light' || theme === 'dark' || theme === 'system') {
+      designState.theme = theme
+      changed = true
+    }
     if (changed) {
-      sendSSEEvent({ type: 'update', accent: designState.accent, gradient: designState.gradient })
+      sendSSEEvent({ type: 'update', accent: designState.accent, gradient: designState.gradient, theme: designState.theme })
     }
     res.json({ ok: true, state: designState })
   } catch (err) {
