@@ -222,7 +222,6 @@ async fn link_enabled_files_to_conversation(conversation_id: String) -> Result<u
 // Authentication window commands
 #[tauri::command]
 async fn open_auth_window(app_handle: tauri::AppHandle) -> Result<(), String> {
-    use tauri::{LogicalSize, LogicalPosition, Size, Position};
 
     let auth_window = tauri::WebviewWindowBuilder::new(
         &app_handle,
@@ -259,7 +258,6 @@ async fn close_auth_window(app_handle: tauri::AppHandle) -> Result<(), String> {
 // Settings window commands
 #[tauri::command]
 async fn open_settings_window(app_handle: tauri::AppHandle) -> Result<(), String> {
-    use tauri::{LogicalSize, LogicalPosition, Size, Position};
 
     // Check if settings window already exists and focus it
     if let Some(settings_window) = app_handle.get_webview_window("settings") {
