@@ -1,0 +1,22 @@
+# AWS Upload Configuration for Pluely
+# 
+# IMPORTANT: Update these values with your actual AWS configuration
+# 
+# 1. Find your API Gateway Invoke URL:
+#    - Go to AWS Console → API Gateway → arkangel-presign-api → Stages → prod
+#    - Copy the "Invoke URL" and append "/ingest/new"
+#    - Example: https://abc123xyz.execute-api.us-west-2.amazonaws.com/ingest/new
+#
+# 2. Set a unique device ID for this computer:
+#    - Use any stable identifier like "dev001", "laptop-01", etc.
+#    - This will be used to namespace your uploads in S3
+#
+# 3. Verify the memory folder path matches your project structure
+#    - Windows: ".\\memory" (double backslash)
+#    - Linux/macOS: "./memory"
+
+api_url = "https://y2xm4fan1b.execute-api.us-west-2.amazonaws.com/prod/ingest/new"
+device_id = "dev001"
+watch_dir = ".\\memory"          # Windows path - change to "./memory" on Linux/macOS
+scan_interval_secs = 60          # How often to check for new files (seconds)
+concurrency = 2                  # How many uploads to process in parallel

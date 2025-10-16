@@ -1,0 +1,57 @@
+[package]
+name = "arkangel"
+version = "0.1.1"
+description = "ArkAngel - A lightning-fast, privacy-first AI assistant that works seamlessly during meetings, interviews, and conversations without anyone knowing."
+authors = ["NadavShanun-design <nadavshanun@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/NadavShanun-design/ArkAngel"
+homepage = "https://github.com/NadavShanun-design/ArkAngel"
+documentation = "https://github.com/NadavShanun-design/ArkAngel/wiki"
+readme = "../README.md"
+keywords = ["ai-assistant", "tauri", "desktop-app", "privacy-first", "meeting-assistant"]
+categories = ["gui", "multimedia", "accessibility", "science", "development-tools"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "arkangel_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["macos-private-api"] }
+tauri-plugin-opener = "2"
+tauri-plugin-updater = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+regex = "1.10"
+# AWS upload dependencies
+reqwest = { version = "0.12", features = ["json", "blocking"] }
+anyhow = "1"
+toml = "0.8"
+time = "0.3"
+walkdir = "2"
+notify = "6"
+# Google OAuth dependencies
+dotenvy = "0.15"
+tiny_http = "0.12"
+webbrowser = "0.8"
+rand = "0.8"
+sha2 = "0.10"
+base64 = { version = "0.21", default-features = false, features = ["alloc"] }
+urlencoding = "2"
+dirs = "5.0"
+# File storage dependencies
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+# PDF text extraction
+pdf-extract = "0.9"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+tauri-plugin-macos-permissions = "2"
