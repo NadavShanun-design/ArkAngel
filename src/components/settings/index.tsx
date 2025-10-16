@@ -150,18 +150,24 @@ export const Settings: React.FC<SettingsProps> = ({ onOpenIntegrations }) => {
     resizeWindow(isPopoverOpen);
   }, [isPopoverOpen, resizeWindow]);
 
-  const openAdvancedInBrowser = () => {
-    // Always open in external browser
+  const openAdvancedInBrowser = async () => {
+    // Open advanced settings in a new Tauri window
     try {
-      const origin = window.location.origin;
-      const target = origin.startsWith("http") ? `${origin}/settings` : "https://www.arkangel.com/settings";
-      openExternalUrl(target).catch(() => {
+      await invoke('open_settings_window');
+    } catch (error) {
+      console.error('Failed to open settings window:', error);
+      // Fallback: try opening in external browser
+      try {
+        const origin = window.location.origin;
+        const target = origin.startsWith("http") ? `${origin}/settings` : "https://www.arkangel.com/settings";
+        openExternalUrl(target).catch(() => {
+          window.open(target, "_blank", "noopener,noreferrer");
+        });
+      } catch {
+        const origin = window.location.origin;
+        const target = origin.startsWith("http") ? `${origin}/settings` : "https://www.arkangel.com/settings";
         window.open(target, "_blank", "noopener,noreferrer");
-      });
-    } catch {
-      const origin = window.location.origin;
-      const target = origin.startsWith("http") ? `${origin}/settings` : "https://www.arkangel.com/settings";
-      window.open(target, "_blank", "noopener,noreferrer");
+      }
     }
   };
 
