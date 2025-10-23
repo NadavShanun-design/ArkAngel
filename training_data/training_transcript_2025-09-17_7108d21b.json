@@ -1,0 +1,16 @@
+{
+  "id": "training_transcript_2025-09-17_7108d21b",
+  "source_type": "transcript",
+  "title": "Transcript: 2025-09-17 at 7108d21b",
+  "content": "{\n  \"format_version\": \"1.0\",\n  \"messages\": [\n    {\n      \"content\": \"CONVERSATION TRANSCRIPT Date: 9/16/2025 Start Time: 9:24:11 PM End Time: 9:24:11 PM Session ID: 7108d21b-870b-4cdf-b738-f547f0d70977 Total Messages: 1\",\n      \"role\": \"\",\n      \"timestamp\": \"\"\n    },\n    {\n      \"content\": \"whtss in the pdf END OF CONVERSATION\",\n      \"role\": \"user\",\n      \"timestamp\": \"9:24:11 PM\"\n    }\n  ],\n  \"optimized_for\": \"rag_training\",\n  \"type\": \"conversation\"\n}",
+  "metadata": {
+    "source_id": "2025-09-17_transcript_21-24-11_7108d21b.txt",
+    "source_date": "2025-09-17",
+    "source_time": null,
+    "message_count": 1,
+    "session_id": "7108d21b",
+    "original_filename": "transcript_21-24-11_7108d21b.txt"
+  },
+  "added_at": "2025-10-22T05:01:48.013191+00:00",
+  "format": "json"
+}

@@ -1,0 +1,9 @@
+This is a test document for ArkAngel file upload system.
+
+The system should be able to:
+1. Upload text files
+2. Extract content
+3. Provide context to LLM conversations
+4. Manage file lifecycle
+
+This document contains sample text that should be processed correctly by the file storage service.

@@ -1,0 +1,19 @@
+{
+  "name": "arkangel-uitars-service",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@ui-tars/operator-nut-js": "latest",
+    "@ui-tars/sdk": "latest",
+    "openai": "^5.5.1",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

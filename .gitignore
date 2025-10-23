@@ -1,0 +1,87 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Production
+dist/
+build/
+out/
+
+# Misc
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.production.local
+.env.development.local
+.env.test.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Tauri
+src-tauri/target/
+src-tauri/WixTools/
+
+# Temporary files
+*.tmp
+*.temp
+.memory/
+
+# Sidecar build
+sidecar/dist/
+
+# OS
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# Uploads folder (contains user data)
+uploads/
+
+# Memory folder (contains conversation history)
+memory/
+
+# Transcripts folder
+transcripts/
+
+# Google workspace files (external dependency)
+google_workspace_mcp-main/
+
+# Image files (design assets, not code)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.icns
+
+# PowerShell scripts (Windows-specific)
+*.ps1
+
+# Git replacement files
+.git-replacements.txt
+
+# Old status file
+tatus*
+downloads/*.dmg
+.env
+sidecar/.env
+*.dmg
+UI-TARS-desktop-main/
+node_modules/
+dist/
+.DS_Store

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Microphone Access -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Pluely needs access to your microphone for voice conversations and audio input functionality</string>
+  
+  <!-- Speech Recognition -->
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>Pluely needs access to speech recognition to convert your voice input to text</string>
+  
+  <!-- Media Library (for audio processing) -->
+  <key>NSAppleEventsUsageDescription</key>
+  <string>Pluely needs access to Apple Events for enhanced audio processing</string>
+  
+  <!-- Privacy - Audio Processing -->
+  <key>NSPrivacyAccessedAPITypes</key>
+  <array>
+    <dict>
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryAudioProcessing</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>C617.1</string>
+      </array>
+    </dict>
+  </array>
+  
+  <!-- Hardened Runtime Entitlements -->
+  <key>com.apple.security.device.microphone</key>
+  <true/>
+  <key>com.apple.security.device.audio-input</key>
+  <true/>
+</dict>
+</plist>
