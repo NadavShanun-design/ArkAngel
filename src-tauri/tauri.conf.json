@@ -26,10 +26,20 @@
         "center": false,
         "contentProtected": false,
         "focus": false,
-        "acceptFirstMouse": true
+        "acceptFirstMouse": true,
+        "dragDropEnabled": false
       }
     ],
-    "security": { "csp": null }
+    "security": {
+      "csp": null,
+      "capabilities": [
+        {
+          "identifier": "draggable-window",
+          "windows": ["*"],
+          "permissions": ["core:window:allow-start-dragging"]
+        }
+      ]
+    }
   },
   "bundle": {
     "active": true,
