@@ -4,6 +4,8 @@ import { ChatConversation } from "./types";
 import { check } from "@tauri-apps/plugin-updater";
 import { startRealTimeExport } from "./lib/storage";
 
+// If you want to make ArkAngel to always stay on top, go to tauri.conf.json and change alwaysOnTop to true
+
 const App = () => {
   const handleSelectConversation = (conversation: ChatConversation) => {
     // Use localStorage to communicate the selected conversation to Completion component
@@ -24,7 +26,7 @@ const App = () => {
   // Start real-time export loop
   useEffect(() => {
     startRealTimeExport();
-    
+
     // Cleanup on unmount
     return () => {
       // The stopRealTimeExport function will be called automatically
@@ -39,7 +41,10 @@ const App = () => {
 
   return (
     <div className="w-screen h-screen flex overflow-hidden justify-center items-start">
-      <Card className="w-full flex flex-row items-center gap-2 p-2">
+      <Card
+        className="flex flex-row items-center gap-2 p-2 drag-region w-full"
+        data-tauri-drag-region
+      >
         <Completion />
         <ChatHistory
           onSelectConversation={handleSelectConversation}
