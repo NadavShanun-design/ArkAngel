@@ -6,7 +6,7 @@ export const useWindowResize = () => {
   const resizeWindow = useCallback(async (expanded: boolean) => {
     try {
       const window = getCurrentWebviewWindow();
-      const newHeight = expanded ? 600 : 54;
+      const newHeight = expanded ? 600 : 80;
 
       await invoke("set_window_height", {
         window,

@@ -14,11 +14,11 @@
     "windows": [
       {
         "title": "ArkAngel - AI Assistant",
-        "width": 700,
+        "width": 600,
         "height": 54,
         "decorations": false,
         "transparent": true,
-        "alwaysOnTop": false,
+        "alwaysOnTop": true,
         "resizable": false,
         "visibleOnAllWorkspaces": true,
         "skipTaskbar": false,
@@ -36,7 +36,11 @@
         {
           "identifier": "draggable-window",
           "windows": ["*"],
-          "permissions": ["core:window:allow-start-dragging"]
+          "permissions": [
+            "core:window:allow-start-dragging",
+            "core:window:allow-minimize",
+            "core:window:allow-close"
+          ]
         }
       ]
     }
