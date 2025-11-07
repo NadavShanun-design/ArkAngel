@@ -111,7 +111,10 @@ export const Completion = () => {
       }
       return { text: JSON.stringify(value, null, 2), isJson: true };
     } catch {
-      return { text: typeof value === "string" ? value : String(value), isJson: false };
+      return {
+        text: typeof value === "string" ? value : String(value),
+        isJson: false,
+      };
     }
   };
 
@@ -267,35 +270,69 @@ export const Completion = () => {
                 {/* Tool activities shown first, in chronological order */}
                 {sortedActivities.length > 0 && (
                   <div className="mb-4">
-                    <div className="text-xs font-semibold mb-2 select-none">Tool activity</div>
+                    <div className="text-xs font-semibold mb-2 select-none">
+                      Tool activity
+                    </div>
                     <div className="space-y-2 text-xs">
                       {sortedActivities.map((a: ToolActivity) => {
-                        const hasInput = a.input !== undefined && a.input !== null;
-                        const hasOutput = a.output !== undefined && a.output !== null;
+                        const hasInput =
+                          a.input !== undefined && a.input !== null;
+                        const hasOutput =
+                          a.output !== undefined && a.output !== null;
                         const hasError = !!a.error;
-                        const inputPretty = hasInput ? toPrettyText(a.input) : null;
-                        const outputPretty = hasOutput ? toPrettyText(a.output) : null;
+                        const inputPretty = hasInput
+                          ? toPrettyText(a.input)
+                          : null;
+                        const outputPretty = hasOutput
+                          ? toPrettyText(a.output)
+                          : null;
 
                         return (
                           <details
                             key={a.id}
-                            className={`tool-activity ${a.status === "in_progress" ? "loading" : ""} p-2 rounded border bg-muted/20 overflow-hidden`}
+                            className={`tool-activity ${
+                              a.status === "in_progress" ? "loading" : ""
+                            } p-2 rounded border bg-muted/20 overflow-hidden`}
                           >
                             <summary className="flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden">
                               {/* Left: tool name + status */}
                               <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded border flex-shrink-0 ${statusBadgeClass(a.status)}`}>
-                                  {a.status === "in_progress" ? "RUNNING" : a.status === "complete" ? "DONE" : "ERROR"}
+                                <span
+                                  className={`text-[10px] px-1.5 py-0.5 rounded border flex-shrink-0 ${statusBadgeClass(
+                                    a.status
+                                  )}`}
+                                >
+                                  {a.status === "in_progress"
+                                    ? "RUNNING"
+                                    : a.status === "complete"
+                                    ? "DONE"
+                                    : "ERROR"}
                                 </span>
-                                <span className="font-medium truncate">{a.name}</span>
+                                <span className="font-medium truncate">
+                                  {a.name}
+                                </span>
                               </div>
                               {/* Right: error badge (if any) + timestamp + chevron */}
                               <div className="flex items-center gap-2 text-muted-foreground flex-shrink-0">
                                 {hasError && (
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded border bg-red-100 text-red-700 border-red-200">Error</span>
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded border bg-red-100 text-red-700 border-red-200">
+                                    Error
+                                  </span>
                                 )}
-                                <span className="text-[10px]">{new Date(a.endedAt || a.startedAt).toLocaleTimeString()}</span>
-                                <svg className="h-3 w-3 transition-transform duration-200 [details[open]_&]:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <span className="text-[10px]">
+                                  {new Date(
+                                    a.endedAt || a.startedAt
+                                  ).toLocaleTimeString()}
+                                </span>
+                                <svg
+                                  className="h-3 w-3 transition-transform duration-200 [details[open]_&]:rotate-180"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
                                   <polyline points="6 9 12 15 18 9"></polyline>
                                 </svg>
                               </div>
@@ -304,8 +341,16 @@ export const Completion = () => {
                             <div className="mt-2 space-y-2 overflow-hidden">
                               {hasInput && inputPretty && (
                                 <div className="overflow-hidden">
-                                  <div className="text-muted-foreground mb-1">Input</div>
-                                  <pre className={`text-[10px] whitespace-pre-wrap break-words break-all p-2 rounded border overflow-x-auto max-w-full ${inputPretty.isJson ? "bg-muted" : "bg-transparent"}`}>
+                                  <div className="text-muted-foreground mb-1">
+                                    Input
+                                  </div>
+                                  <pre
+                                    className={`text-[10px] whitespace-pre-wrap break-words break-all p-2 rounded border overflow-x-auto max-w-full ${
+                                      inputPretty.isJson
+                                        ? "bg-muted"
+                                        : "bg-transparent"
+                                    }`}
+                                  >
                                     {inputPretty.text}
                                   </pre>
                                 </div>
@@ -313,8 +358,16 @@ export const Completion = () => {
 
                               {hasOutput && outputPretty && (
                                 <div className="overflow-hidden">
-                                  <div className="text-muted-foreground mb-1">Output</div>
-                                  <pre className={`text-[10px] whitespace-pre-wrap break-words break-all p-2 rounded border overflow-x-auto max-w-full ${outputPretty.isJson ? "bg-muted" : "bg-transparent"}`}>
+                                  <div className="text-muted-foreground mb-1">
+                                    Output
+                                  </div>
+                                  <pre
+                                    className={`text-[10px] whitespace-pre-wrap break-words break-all p-2 rounded border overflow-x-auto max-w-full ${
+                                      outputPretty.isJson
+                                        ? "bg-muted"
+                                        : "bg-transparent"
+                                    }`}
+                                  >
                                     {outputPretty.text}
                                   </pre>
                                 </div>
@@ -322,7 +375,9 @@ export const Completion = () => {
 
                               {hasError && (
                                 <div className="overflow-hidden">
-                                  <div className="text-muted-foreground mb-1">Error</div>
+                                  <div className="text-muted-foreground mb-1">
+                                    Error
+                                  </div>
                                   <pre className="text-[10px] whitespace-pre-wrap break-words break-all p-2 rounded border bg-red-50 text-red-700 border-red-200 overflow-x-auto max-w-full">
                                     {a.error}
                                   </pre>

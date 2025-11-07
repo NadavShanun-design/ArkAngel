@@ -14,11 +14,11 @@
     "windows": [
       {
         "title": "ArkAngel - AI Assistant",
-        "width": 700,
+        "width": 600,
         "height": 54,
         "decorations": false,
         "transparent": true,
-        "alwaysOnTop": false,
+        "alwaysOnTop": true,
         "resizable": false,
         "visibleOnAllWorkspaces": true,
         "skipTaskbar": false,
@@ -26,10 +26,24 @@
         "center": false,
         "contentProtected": false,
         "focus": false,
-        "acceptFirstMouse": true
+        "acceptFirstMouse": true,
+        "dragDropEnabled": false
       }
     ],
-    "security": { "csp": null }
+    "security": {
+      "csp": null,
+      "capabilities": [
+        {
+          "identifier": "draggable-window",
+          "windows": ["*"],
+          "permissions": [
+            "core:window:allow-start-dragging",
+            "core:window:allow-minimize",
+            "core:window:allow-close"
+          ]
+        }
+      ]
+    }
   },
   "bundle": {
     "active": true,

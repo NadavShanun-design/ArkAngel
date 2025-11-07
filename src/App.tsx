@@ -3,6 +3,10 @@ import { Card, Settings, Completion, ChatHistory } from "./components";
 import { ChatConversation } from "./types";
 import { check } from "@tauri-apps/plugin-updater";
 import { startRealTimeExport } from "./lib/storage";
+import { WindowControls } from "./components/ui/windows-control";
+import { Wind } from "lucide-react";
+
+// If you want to make ArkAngel to always stay on top, go to tauri.conf.json and change alwaysOnTop to true
 
 const App = () => {
   const handleSelectConversation = (conversation: ChatConversation) => {
@@ -24,7 +28,7 @@ const App = () => {
   // Start real-time export loop
   useEffect(() => {
     startRealTimeExport();
-    
+
     // Cleanup on unmount
     return () => {
       // The stopRealTimeExport function will be called automatically
@@ -37,9 +41,13 @@ const App = () => {
     window.dispatchEvent(new CustomEvent("newConversation"));
   };
 
+  // Set rounded border to wrap functional ui as signifier
   return (
     <div className="w-screen h-screen flex overflow-hidden justify-center items-start">
-      <Card className="w-full flex flex-row items-center gap-2 p-2">
+      <Card
+        className="flex flex-row items-center gap-2 p-2 pt-8 drag-region w-full"
+        data-tauri-drag-region
+      >
         <Completion />
         <ChatHistory
           onSelectConversation={handleSelectConversation}
@@ -47,6 +55,8 @@ const App = () => {
           currentConversationId={null}
         />
         <Settings />
+        {/* WindowControls has its own absolute positioning */}
+        <WindowControls />
       </Card>
     </div>
   );
