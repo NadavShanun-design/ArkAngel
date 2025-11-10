@@ -7,18 +7,42 @@ mod training_data_manager;
 mod agent_manager;
 mod rag_system_manager;
 mod simple_rag_manager;  // NEW: Fast RAG without embeddings
+mod openai_rag_manager;  // NEW: Production RAG with OpenAI embeddings
 mod uitars_agent;
 mod secure_storage;  // NEW: Secure API key storage
+mod logger;  // NEW: Centralized logging infrastructure
+mod whisper_local;  // NEW: On-device Whisper transcription (pre-built binary)
+mod screenshot_manager;  // NEW: Screenshot capture and storage
+mod vlm_captioner;  // NEW: Vision Language Model integration
 
 use std::process::{Command as StdCommand, Stdio, Child};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::io::{BufRead, BufReader};
 use tauri::Manager;
+use tauri::Emitter;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+// Test command to verify events work
+#[tauri::command]
+async fn test_event_system(app: tauri::AppHandle) -> Result<String, String> {
+    println!("🧪 [TEST] Testing event system...");
+
+    // Try emitting a test event
+    match app.emit("test_event", "Hello from Rust!") {
+        Ok(_) => {
+            println!("✅ [TEST] Event emitted successfully!");
+            Ok("Event system working! Check frontend console.".to_string())
+        },
+        Err(e) => {
+            eprintln!("❌ [TEST] Event emission failed: {}", e);
+            Err(format!("Event emission failed: {}", e))
+        }
+    }
 }
 
 #[tauri::command]
@@ -339,6 +363,81 @@ async fn close_settings_window(app_handle: tauri::AppHandle) -> Result<(), Strin
     Ok(())
 }
 
+// Screenshot capture commands
+#[tauri::command]
+async fn capture_screenshot() -> Result<screenshot_manager::ScreenshotInfo, String> {
+    screenshot_manager::capture_primary_monitor()
+}
+
+#[tauri::command]
+async fn get_all_screenshots() -> Result<Vec<screenshot_manager::ScreenshotInfo>, String> {
+    screenshot_manager::get_all_screenshots()
+}
+
+#[tauri::command]
+async fn delete_screenshot(screenshot_id: String) -> Result<(), String> {
+    screenshot_manager::delete_screenshot(&screenshot_id)
+}
+
+#[tauri::command]
+async fn get_screenshot_by_id(screenshot_id: String) -> Result<screenshot_manager::ScreenshotInfo, String> {
+    screenshot_manager::get_screenshot_by_id(&screenshot_id)
+}
+
+// VLM and training integration command
+#[derive(serde::Serialize)]
+struct AddToTrainingResult {
+    screenshot_id: String,
+    caption: String,
+    tokens_used: u32,
+    cost: f64,
+}
+
+#[tauri::command]
+async fn add_screenshot_to_training(
+    screenshot_id: String,
+    api_key: String,
+    provider: Option<String>,
+) -> Result<AddToTrainingResult, String> {
+    println!("[AddToTraining] Starting for screenshot: {}", screenshot_id);
+
+    // Get screenshot info
+    let screenshot = screenshot_manager::get_screenshot_by_id(&screenshot_id)?;
+
+    // Generate caption using VLM (default to GPT-4o-mini)
+    let caption_result = match provider.as_deref() {
+        Some("claude") => vlm_captioner::caption_with_claude(&screenshot.file_path, &api_key).await?,
+        _ => vlm_captioner::caption_with_gpt4o_mini(&screenshot.file_path, &api_key).await?,
+    };
+
+    println!("[AddToTraining] Caption generated: {} chars", caption_result.caption.len());
+
+    // Add to training data system
+    let training_manager = training_data_manager::TrainingDataManager::new()
+        .map_err(|e| format!("Failed to initialize training manager: {}", e))?;
+
+    training_manager.add_screenshot_to_training(
+        screenshot_id.clone(),
+        screenshot.file_path.clone(),
+        caption_result.caption.clone(),
+        screenshot.width,
+        screenshot.height,
+        screenshot.timestamp.clone(),
+    ).map_err(|e| format!("Failed to save to training data: {}", e))?;
+
+    // Mark screenshot as added to training
+    screenshot_manager::mark_as_added_to_training(&screenshot_id)?;
+
+    println!("[AddToTraining] Complete! Cost: ${:.6}", caption_result.cost);
+
+    Ok(AddToTrainingResult {
+        screenshot_id,
+        caption: caption_result.caption,
+        tokens_used: caption_result.tokens_used,
+        cost: caption_result.cost,
+    })
+}
+
 // Transcript management commands
 #[tauri::command]
 async fn list_transcripts() -> Result<Vec<transcript_manager::TranscriptFile>, String> {
@@ -566,6 +665,110 @@ async fn get_rag_full_context(persona_id: String) -> Result<String, String> {
         .map_err(|e| format!("Failed to get full context: {}", e))
 }
 
+// OpenAI RAG System commands - Production-ready semantic search
+#[tauri::command]
+async fn create_openai_rag_persona(
+    app: tauri::AppHandle,
+    name: String,
+    description: String,
+    training_item_ids: Vec<String>,
+    api_key: String,
+) -> Result<openai_rag_manager::OpenAIRagPersona, String> {
+    tracing::info!("\n=== [Command] create_openai_rag_persona START ===");
+    tracing::info!("[Command] Name: {}", name);
+    tracing::info!("[Command] Training items: {}", training_item_ids.len());
+
+    let manager = openai_rag_manager::OpenAIRagManager::new()
+        .map_err(|e| format!("Failed to initialize OpenAI RAG manager: {}", e))?;
+
+    let result = manager.create_persona(name.clone(), description, training_item_ids, api_key, app).await
+        .map_err(|e| {
+            let err_msg = format!("Failed to create OpenAI RAG persona '{}': {}", name, e);
+            tracing::error!("{}", err_msg);
+            err_msg
+        });
+
+    if let Ok(ref persona) = result {
+        tracing::info!("✅ SUCCESS: OpenAI RAG persona created with ID: {}", persona.id);
+    }
+
+    tracing::info!("=== [Command] create_openai_rag_persona END ===\n");
+    result
+}
+
+#[tauri::command]
+async fn query_openai_rag(
+    persona_id: String,
+    query: String,
+    api_key: String,
+    top_k: usize,
+) -> Result<Vec<openai_rag_manager::SearchResult>, String> {
+    let manager = openai_rag_manager::OpenAIRagManager::new()
+        .map_err(|e| format!("Failed to initialize OpenAI RAG manager: {}", e))?;
+
+    manager.query(&persona_id, query, api_key, top_k).await
+        .map_err(|e| format!("Failed to query OpenAI RAG: {}", e))
+}
+
+#[tauri::command]
+async fn list_openai_rag_personas() -> Result<Vec<openai_rag_manager::OpenAIRagPersona>, String> {
+    let manager = openai_rag_manager::OpenAIRagManager::new()
+        .map_err(|e| format!("Failed to initialize OpenAI RAG manager: {}", e))?;
+
+    manager.list_personas()
+        .map_err(|e| format!("Failed to list OpenAI RAG personas: {}", e))
+}
+
+#[tauri::command]
+async fn delete_openai_rag_persona(persona_id: String) -> Result<(), String> {
+    let manager = openai_rag_manager::OpenAIRagManager::new()
+        .map_err(|e| format!("Failed to initialize OpenAI RAG manager: {}", e))?;
+
+    manager.delete_persona(&persona_id)
+        .map_err(|e| format!("Failed to delete OpenAI RAG persona: {}", e))
+}
+
+// ========== TRANSCRIPTION COMMANDS ==========
+
+/// Transcribe audio using on-device Whisper (pre-built binary)
+#[tauri::command]
+async fn transcribe_audio_local(
+    audio_data: Vec<f32>,
+    app: tauri::AppHandle,
+) -> Result<String, String> {
+    use tauri::State;
+
+    // Get transcription manager
+    let manager = app.state::<Arc<Mutex<whisper_local::WhisperLocal>>>();
+    let manager_guard = manager.lock().unwrap();
+
+    manager_guard
+        .transcribe(audio_data, &app)
+        .map_err(|e| format!("Transcription failed: {}", e))
+}
+
+/// Check if local Whisper is available
+#[tauri::command]
+fn is_local_transcription_available(app: tauri::AppHandle) -> Result<bool, String> {
+    use tauri::State;
+
+    let manager = app.state::<Arc<Mutex<whisper_local::WhisperLocal>>>();
+    let manager_guard = manager.lock().unwrap();
+
+    Ok(manager_guard.is_available())
+}
+
+/// Get whisper binary and model paths
+#[tauri::command]
+fn get_whisper_paths(app: tauri::AppHandle) -> Result<(String, String), String> {
+    use tauri::State;
+
+    let manager = app.state::<Arc<Mutex<whisper_local::WhisperLocal>>>();
+    let manager_guard = manager.lock().unwrap();
+
+    Ok(manager_guard.get_paths())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
@@ -573,6 +776,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             greet,
+            test_event_system,
             get_app_version,
             set_window_height,
             write_conversation_to_file,
@@ -595,6 +799,11 @@ pub fn run() {
             close_auth_window,
             open_settings_window,
             close_settings_window,
+            capture_screenshot,
+            get_all_screenshots,
+            delete_screenshot,
+            get_screenshot_by_id,
+            add_screenshot_to_training,
             agent_manager::check_agent_permissions,
             agent_manager::start_agent,
             agent_manager::stop_agent,
@@ -618,6 +827,10 @@ pub fn run() {
             delete_rag_persona,
             get_rag_persona,
             get_rag_full_context,
+            create_openai_rag_persona,
+            query_openai_rag,
+            list_openai_rag_personas,
+            delete_openai_rag_persona,
             uitars_agent::start_uitars_agent,
             uitars_agent::stop_uitars_agent,
             uitars_agent::execute_uitars_command,
@@ -628,8 +841,18 @@ pub fn run() {
             secure_storage::list_stored_providers,
             secure_storage::has_api_key,
             secure_storage::migrate_keys_to_secure_storage,
+            transcribe_audio_local,
+            is_local_transcription_available,
+            get_whisper_paths,
         ])
         .setup(|app| {
+            // Initialize logging system FIRST
+            if let Err(e) = logger::init_logging() {
+                eprintln!("Failed to initialize logging: {}", e);
+            } else {
+                println!("✅ Logging system initialized successfully");
+            }
+
             // Make a shared place to store the sidecar child
             app.manage(Mutex::new(None::<Child>));
 
@@ -639,6 +862,31 @@ pub fn run() {
             // Initialize UI-TARS agent
             let uitars_agent = Arc::new(Mutex::new(uitars_agent::UITarsAgent::new()));
             app.manage(uitars_agent);
+
+            // Initialize local Whisper transcription
+            let binary_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("binaries/whisper-mac-arm64");
+            let model_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("models/ggml-base.en.bin");
+
+            match whisper_local::WhisperLocal::new(binary_path.clone(), model_path.clone()) {
+                Ok(whisper) => {
+                    app.manage(Arc::new(Mutex::new(whisper)));
+                    println!("✅ Local Whisper transcription initialized");
+                    println!("   Binary: {}", binary_path.display());
+                    println!("   Model: {}", model_path.display());
+                }
+                Err(e) => {
+                    eprintln!("⚠️  Failed to initialize local Whisper: {}", e);
+                    eprintln!("   Transcription will fall back to OpenAI API");
+                    // Create a placeholder that will always fail
+                    let whisper = whisper_local::WhisperLocal::new(
+                        std::path::PathBuf::from("/nonexistent/binary"),
+                        std::path::PathBuf::from("/nonexistent/model"),
+                    ).unwrap_or_else(|_| panic!("Failed to create placeholder"));
+                    app.manage(Arc::new(Mutex::new(whisper)));
+                }
+            }
 
             // Setup main window positioning
             window::setup_main_window(app).expect("Failed to setup main window");

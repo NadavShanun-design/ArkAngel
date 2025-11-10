@@ -1447,7 +1447,7 @@ const AgentSection: React.FC = () => {
   const [validationStatus, setValidationStatus] = useState<"idle" | "validating" | "success" | "failed">("idle");
   const validationStatusRef = useRef<"idle" | "validating" | "success" | "failed">("idle");
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
-  const [systemLogs, setSystemLogs] = useState<string[]>([]);
+  const [showDebugLogs, setShowDebugLogs] = useState<boolean>(false);
   const [requireApproval, setRequireApproval] = useState<boolean>(true);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -1646,11 +1646,11 @@ const AgentSection: React.FC = () => {
 
     const addSystemLog = (level: string, ...args: any[]) => {
       const timestamp = new Date().toLocaleTimeString();
-      const message = args.map(arg =>
+      const message = args.map((arg: any) =>
         typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
       ).join(' ');
       const logEntry = `[${timestamp}] [${level}] ${message}`;
-      setSystemLogs(prev => [...prev.slice(-99), logEntry]); // Keep last 100 logs
+      setDebugLogs((prev: string[]) => [...prev.slice(-99), logEntry]); // Keep last 100 logs
     };
 
     console.log = (...args: any[]) => {

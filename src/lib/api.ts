@@ -293,7 +293,7 @@ export const streamCompletion = async (
             let content = "";
 
             // extract content based on provider
-            if (provider.id === "openai" || provider.id === "grok") {
+            if (provider.id === "openai" || provider.id === "grok" || provider.id === "groq") {
               content = parsed.choices?.[0]?.delta?.content || "";
             } else if (provider.id === "claude") {
               if (parsed.type === "content_block_delta") {

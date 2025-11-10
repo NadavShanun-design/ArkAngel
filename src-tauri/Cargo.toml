@@ -49,6 +49,19 @@ chrono = { version = "0.4", features = ["serde"] }
 pdf-extract = "0.9"
 # Async runtime for proper event emission timing
 tokio = { version = "1", features = ["full"] }
+# Logging infrastructure
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "ansi"] }
+tracing-appender = "0.2"
+# RAG System - OpenAI embeddings
+async-openai = "0.23"
+# Vector operations for similarity search
+ndarray = "0.15"
+# On-device transcription with Whisper (using pre-built binary)
+tempfile = "3.8"  # Temporary WAV file creation
+# Screenshot capture and multimodal RAG
+xcap = "0.0.12"  # Cross-platform screenshot capture
+image = "0.25"  # Image processing and resizing
 
 [target.'cfg(target_os = "macos")'.dependencies]
 tauri-plugin-macos-permissions = "2"

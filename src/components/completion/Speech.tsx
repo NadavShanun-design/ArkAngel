@@ -1,8 +1,8 @@
-import { getSettings, transcribeAudio } from "@/lib";
+import { getSettings, transcribeAudio, transcribeAudioLocal, isLocalTranscriptionAvailable } from "@/lib";
 import { CompletionState } from "@/types";
 import { useMicVAD } from "@ricky0123/vad-react";
 import { LoaderCircleIcon, MicIcon } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "../ui/button";
 
 export const Speech = ({
@@ -15,6 +15,19 @@ export const Speech = ({
   setEnableVAD: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [useLocalTranscription, setUseLocalTranscription] = useState(false);
+
+  // Check if local transcription is available on mount
+  useEffect(() => {
+    isLocalTranscriptionAvailable().then((available) => {
+      setUseLocalTranscription(available);
+      if (available) {
+        console.log("✅ Local transcription is available");
+      } else {
+        console.log("⚠️ Local transcription not available, using OpenAI API");
+      }
+    });
+  }, []);
 
   const vad = useMicVAD({
     userSpeakingThreshold: 0.6,
@@ -24,37 +37,56 @@ export const Speech = ({
       console.log("🔍 Audio data:", audio);
       console.log("🔍 Audio type:", typeof audio);
       console.log("🔍 Audio length:", audio?.length);
-      
+
       try {
         console.log("🔍 Starting transcription process...");
         setIsTranscribing(true);
-        const settings = getSettings();
-        console.log("🔍 Settings retrieved:", settings);
 
-        // Check if we have an OpenAI API key for transcription
-        let openAiKey = "";
-        if (settings.selectedProvider === "openai") {
-          console.log("🔍 Using OpenAI provider");
-          if (!settings?.apiKey || !settings?.isApiKeySubmitted) {
-            console.warn("🔍 No OpenAI API key configured for transcription");
-            return;
+        let transcription = "";
+
+        // Try local transcription first (FAST & PRIVATE)
+        if (useLocalTranscription) {
+          console.log("🎙️ Using LOCAL on-device transcription (fast & private)");
+          try {
+            transcription = await transcribeAudioLocal(audio);
+            console.log("✅ Local transcription succeeded:", transcription);
+          } catch (localError) {
+            console.error("❌ Local transcription failed, falling back to OpenAI:", localError);
+            // Fall through to OpenAI API
           }
-          openAiKey = settings.apiKey;
-          console.log("🔍 OpenAI API key found, length:", openAiKey.length);
-        } else {
-          console.log("🔍 Using separate OpenAI key for provider:", settings.selectedProvider);
-          if (!settings?.openAiApiKey || !settings?.isOpenAiApiKeySubmitted) {
-            console.warn("🔍 No OpenAI API key configured for speech-to-text");
-            return;
-          }
-          openAiKey = settings.openAiApiKey;
-          console.log("🔍 Separate OpenAI API key found, length:", openAiKey.length);
         }
 
-        console.log("🔍 Calling transcribeAudio...");
-        const transcription = await transcribeAudio(audio, openAiKey);
-        console.log("🔍 Transcription result:", transcription);
-        
+        // Fall back to OpenAI API if local failed or not available
+        if (!transcription) {
+          console.log("🌐 Using OpenAI API transcription (cloud)");
+          const settings = getSettings();
+          console.log("🔍 Settings retrieved:", settings);
+
+          // Check if we have an OpenAI API key for transcription
+          let openAiKey = "";
+          if (settings.selectedProvider === "openai") {
+            console.log("🔍 Using OpenAI provider");
+            if (!settings?.apiKey || !settings?.isApiKeySubmitted) {
+              console.warn("🔍 No OpenAI API key configured for transcription");
+              return;
+            }
+            openAiKey = settings.apiKey;
+            console.log("🔍 OpenAI API key found, length:", openAiKey.length);
+          } else {
+            console.log("🔍 Using separate OpenAI key for provider:", settings.selectedProvider);
+            if (!settings?.openAiApiKey || !settings?.isOpenAiApiKeySubmitted) {
+              console.warn("🔍 No OpenAI API key configured for speech-to-text");
+              return;
+            }
+            openAiKey = settings.openAiApiKey;
+            console.log("🔍 Separate OpenAI API key found, length:", openAiKey.length);
+          }
+
+          console.log("🔍 Calling transcribeAudio...");
+          transcription = await transcribeAudio(audio, openAiKey);
+          console.log("🔍 Transcription result:", transcription);
+        }
+
         if (transcription) {
           console.log("🔍 Submitting transcription:", transcription);
           submit(transcription);

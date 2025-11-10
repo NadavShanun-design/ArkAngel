@@ -1,4 +1,4 @@
-import { MicIcon, PaperclipIcon, Loader2, XIcon, CopyIcon } from "lucide-react";
+import { MicIcon, PaperclipIcon, Loader2, XIcon, CopyIcon, CircleDotIcon } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -396,6 +396,24 @@ export const Completion = () => {
           className="hidden"
         />
       </div>
+
+      <Button
+        size="icon"
+        onClick={async () => {
+          if (typeof (window as any).minimizeToOrb === 'function') {
+            try {
+              await (window as any).minimizeToOrb();
+            } catch (err) {
+              console.error('[MINIMIZE] Failed to minimize:', err);
+            }
+          }
+        }}
+        disabled={isLoading}
+        className="cursor-pointer"
+        title="Minimize to orb"
+      >
+        <CircleDotIcon className="h-4 w-4" />
+      </Button>
     </>
   );
 };

@@ -6,6 +6,7 @@ use chrono::Utc;
 use tauri::Emitter;
 
 use crate::training_data_manager::{TrainingDataManager, TrainingDataItem};
+use crate::logger::AppLogEvent;
 
 /// Progress event emitted during RAG persona creation
 #[derive(Debug, Serialize, Clone)]
@@ -15,53 +16,6 @@ struct RagProgressEvent {
     total_steps: u32,
     percentage: u32,
     details: Option<String>,
-}
-
-/// Log event emitted to frontend for real-time monitoring
-#[derive(Debug, Serialize, Clone)]
-struct LogEvent {
-    level: String,
-    source: String,
-    message: String,
-    details: Option<String>,
-}
-
-impl LogEvent {
-    fn info(source: &str, message: String) -> Self {
-        Self {
-            level: "info".to_string(),
-            source: source.to_string(),
-            message,
-            details: None,
-        }
-    }
-
-    fn success(source: &str, message: String) -> Self {
-        Self {
-            level: "success".to_string(),
-            source: source.to_string(),
-            message,
-            details: None,
-        }
-    }
-
-    fn error(source: &str, message: String, details: Option<String>) -> Self {
-        Self {
-            level: "error".to_string(),
-            source: source.to_string(),
-            message,
-            details,
-        }
-    }
-
-    fn debug(source: &str, message: String, details: Option<String>) -> Self {
-        Self {
-            level: "debug".to_string(),
-            source: source.to_string(),
-            message,
-            details,
-        }
-    }
 }
 
 /// Simplified RAG Persona - No embeddings, just links to training data
@@ -146,35 +100,25 @@ impl SimpleRagManager {
         println!("[SimpleRAG] Description: {}", description);
         println!("[SimpleRAG] Training items: {:?}", training_item_ids);
 
-        // Emit startup log
-        println!("[SimpleRAG] Emitting startup logs to frontend...");
-        if let Err(e) = app_handle.emit("app_log", LogEvent::info(
-            "RAG",
+        // Emit startup log using new logger
+        tracing::info!("🚀 Starting RAG persona creation: '{}'", name);
+        AppLogEvent::info(
+            "SimpleRAG",
             format!("🚀 Starting RAG persona creation: '{}'", name)
-        )) {
-            eprintln!("[SimpleRAG] ERROR: Failed to emit startup log: {}", e);
-        } else {
-            println!("[SimpleRAG] ✅ Startup log emitted");
-        }
+        ).emit_to_frontend(&app_handle);
 
-        if let Err(e) = app_handle.emit("app_log", LogEvent::debug(
-            "RAG",
+        AppLogEvent::debug(
+            "SimpleRAG",
             format!("Configuration: {} training items selected", training_item_ids.len()),
             Some(format!("Items: {:?}", training_item_ids))
-        )) {
-            eprintln!("[SimpleRAG] ERROR: Failed to emit debug log: {}", e);
-        } else {
-            println!("[SimpleRAG] ✅ Debug log emitted");
-        }
+        ).emit_to_frontend(&app_handle);
 
         // Step 1: Validate training data (20%)
-        println!("[SimpleRAG] Step 1/5: Validating {} training items", training_item_ids.len());
-        if let Err(e) = app_handle.emit("app_log", LogEvent::info(
-            "RAG",
+        tracing::info!("Step 1/5: Validating {} training items", training_item_ids.len());
+        AppLogEvent::info(
+            "SimpleRAG",
             format!("📋 Step 1/5: Validating {} training items", training_item_ids.len())
-        )) {
-            eprintln!("[SimpleRAG] ERROR emitting log: {}", e);
-        }
+        ).emit_to_frontend(&app_handle);
 
         let event1 = RagProgressEvent {
             status: "Validating training data...".to_string(),
@@ -183,51 +127,51 @@ impl SimpleRagManager {
             percentage: 20,
             details: Some(format!("{} items selected", training_item_ids.len())),
         };
-        println!("[SimpleRAG] Emitting rag_progress event: {:?}", event1);
+        tracing::debug!("Emitting rag_progress event: {:?}", event1);
         if let Err(e) = app_handle.emit("rag_progress", event1) {
-            eprintln!("[SimpleRAG] ❌ ERROR emitting progress event 1: {}", e);
-            let _ = app_handle.emit("app_log", LogEvent::error(
-                "RAG",
+            tracing::error!("❌ ERROR emitting progress event 1: {}", e);
+            AppLogEvent::error(
+                "SimpleRAG",
                 "Failed to emit progress event".to_string(),
                 Some(e.to_string())
-            ));
+            ).emit_to_frontend(&app_handle);
         } else {
-            println!("[SimpleRAG] ✅ Progress event 1 emitted successfully");
+            tracing::debug!("✅ Progress event 1 emitted successfully");
         }
         tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
 
         // Verify all training items exist
         for (idx, item_id) in training_item_ids.iter().enumerate() {
-            println!("[SimpleRAG] Validating item {}/{}: {}", idx + 1, training_item_ids.len(), item_id);
-            let _ = app_handle.emit("app_log", LogEvent::debug(
-                "RAG",
+            tracing::debug!("Validating item {}/{}: {}", idx + 1, training_item_ids.len(), item_id);
+            AppLogEvent::debug(
+                "SimpleRAG",
                 format!("Validating item {}/{}: {}", idx + 1, training_item_ids.len(), item_id),
                 None
-            ));
+            ).emit_to_frontend(&app_handle);
 
             if self.training_manager.get_training_item(item_id).is_err() {
                 let error_msg = format!("Training item not found: {}", item_id);
-                eprintln!("[SimpleRAG] ERROR: {}", error_msg);
-                let _ = app_handle.emit("app_log", LogEvent::error(
-                    "RAG",
+                tracing::error!("{}", error_msg);
+                AppLogEvent::error(
+                    "SimpleRAG",
                     error_msg.clone(),
                     Some(format!("Item ID: {}", item_id))
-                ));
+                ).emit_to_frontend(&app_handle);
                 return Err(anyhow!(error_msg));
             }
         }
 
-        let _ = app_handle.emit("app_log", LogEvent::success(
-            "RAG",
+        AppLogEvent::success(
+            "SimpleRAG",
             format!("✅ All {} training items validated successfully", training_item_ids.len())
-        ));
+        ).emit_to_frontend(&app_handle);
 
         // Step 2: Load training items (40%)
-        println!("[SimpleRAG] Step 2/5: Loading training items");
-        let _ = app_handle.emit("app_log", LogEvent::info(
-            "RAG",
+        tracing::info!("Step 2/5: Loading training items");
+        AppLogEvent::info(
+            "SimpleRAG",
             "📚 Step 2/5: Loading training items from disk".to_string()
-        ));
+        ).emit_to_frontend(&app_handle);
 
         let event2 = RagProgressEvent {
             status: "Loading training items...".to_string(),
@@ -246,26 +190,26 @@ impl SimpleRagManager {
 
         let mut loaded_items = Vec::new();
         for (idx, item_id) in training_item_ids.iter().enumerate() {
-            let _ = app_handle.emit("app_log", LogEvent::debug(
-                "RAG",
+            AppLogEvent::debug(
+                "SimpleRAG",
                 format!("Loading item {}/{}: {}", idx + 1, training_item_ids.len(), item_id),
                 None
-            ));
+            ).emit_to_frontend(&app_handle);
             let item = self.training_manager.get_training_item(item_id)?;
             loaded_items.push(item);
         }
 
-        let _ = app_handle.emit("app_log", LogEvent::success(
-            "RAG",
+        AppLogEvent::success(
+            "SimpleRAG",
             format!("✅ Loaded {} training items successfully", loaded_items.len())
-        ));
+        ).emit_to_frontend(&app_handle);
 
         // Step 3: Extract text content (60%)
-        println!("[SimpleRAG] Step 3/5: Extracting text from {} items", loaded_items.len());
-        let _ = app_handle.emit("app_log", LogEvent::info(
-            "RAG",
+        tracing::info!("Step 3/5: Extracting text from {} items", loaded_items.len());
+        AppLogEvent::info(
+            "SimpleRAG",
             format!("🔍 Step 3/5: Extracting text from {} items", loaded_items.len())
-        ));
+        ).emit_to_frontend(&app_handle);
 
         let event3 = RagProgressEvent {
             status: "Extracting text content...".to_string(),
@@ -284,31 +228,31 @@ impl SimpleRagManager {
 
         let mut total_chunks = 0;
         for (idx, item) in loaded_items.iter().enumerate() {
-            let _ = app_handle.emit("app_log", LogEvent::debug(
-                "RAG",
+            AppLogEvent::debug(
+                "SimpleRAG",
                 format!("Extracting chunks from item {}/{}: {}", idx + 1, loaded_items.len(), item.title),
                 None
-            ));
+            ).emit_to_frontend(&app_handle);
             let chunks = self.extract_chunks_from_item(item)?;
             total_chunks += chunks.len();
-            let _ = app_handle.emit("app_log", LogEvent::debug(
-                "RAG",
+            AppLogEvent::debug(
+                "SimpleRAG",
                 format!("  → Extracted {} chunks from '{}'", chunks.len(), item.title),
                 None
-            ));
+            ).emit_to_frontend(&app_handle);
         }
-        println!("[SimpleRAG] Extracted {} text chunks", total_chunks);
-        let _ = app_handle.emit("app_log", LogEvent::success(
-            "RAG",
+        tracing::info!("Extracted {} text chunks", total_chunks);
+        AppLogEvent::success(
+            "SimpleRAG",
             format!("✅ Extracted {} text chunks total", total_chunks)
-        ));
+        ).emit_to_frontend(&app_handle);
 
         // Step 4: Create persona object (80%)
-        println!("[SimpleRAG] Step 4/5: Creating persona object");
-        let _ = app_handle.emit("app_log", LogEvent::info(
-            "RAG",
+        tracing::info!("Step 4/5: Creating persona object");
+        AppLogEvent::info(
+            "SimpleRAG",
             format!("📝 Step 4/5: Creating persona metadata for '{}'", name)
-        ));
+        ).emit_to_frontend(&app_handle);
 
         let event4 = RagProgressEvent {
             status: "Creating persona file...".to_string(),
@@ -326,11 +270,11 @@ impl SimpleRagManager {
         tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
 
         let id = format!("rag_{}", uuid::Uuid::new_v4().to_string().replace("-", ""));
-        let _ = app_handle.emit("app_log", LogEvent::debug(
-            "RAG",
+        AppLogEvent::debug(
+            "SimpleRAG",
             format!("Generated persona ID: {}", id),
             None
-        ));
+        ).emit_to_frontend(&app_handle);
 
         let persona = SimpleRagPersona {
             id: id.clone(),
@@ -342,17 +286,17 @@ impl SimpleRagManager {
             source_count: training_item_ids.len(),
         };
 
-        let _ = app_handle.emit("app_log", LogEvent::success(
-            "RAG",
+        AppLogEvent::success(
+            "SimpleRAG",
             "✅ Persona metadata created".to_string()
-        ));
+        ).emit_to_frontend(&app_handle);
 
         // Step 5: Save to disk (100%)
-        println!("[SimpleRAG] Step 5/5: Saving persona to disk");
-        let _ = app_handle.emit("app_log", LogEvent::info(
-            "RAG",
+        tracing::info!("Step 5/5: Saving persona to disk");
+        AppLogEvent::info(
+            "SimpleRAG",
             "💾 Step 5/5: Saving persona to disk".to_string()
-        ));
+        ).emit_to_frontend(&app_handle);
 
         let event5 = RagProgressEvent {
             status: "Saving persona...".to_string(),
@@ -370,21 +314,21 @@ impl SimpleRagManager {
         tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
 
         let persona_file = self.rag_dir.join(format!("{}.json", id));
-        println!("[SimpleRAG] Writing persona to: {:?}", persona_file);
-        let _ = app_handle.emit("app_log", LogEvent::debug(
-            "RAG",
+        tracing::debug!("Writing persona to: {:?}", persona_file);
+        AppLogEvent::debug(
+            "SimpleRAG",
             format!("Saving to: {:?}", persona_file),
             None
-        ));
+        ).emit_to_frontend(&app_handle);
 
         let json_content = serde_json::to_string_pretty(&persona)?;
         fs::write(&persona_file, json_content)?;
-        println!("[SimpleRAG] Persona file written successfully");
+        tracing::info!("Persona file written successfully");
 
-        let _ = app_handle.emit("app_log", LogEvent::success(
-            "RAG",
+        AppLogEvent::success(
+            "SimpleRAG",
             "✅ Persona file written to disk".to_string()
-        ));
+        ).emit_to_frontend(&app_handle);
 
         // Final complete event
         let event_complete = RagProgressEvent {
@@ -402,14 +346,14 @@ impl SimpleRagManager {
         }
         tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
-        println!("[SimpleRAG] ✅ Created persona: {} with {} sources ({} chunks)",
+        tracing::info!("✅ Created persona: {} with {} sources ({} chunks)",
                  persona.name, persona.source_count, total_chunks);
 
-        let _ = app_handle.emit("app_log", LogEvent::success(
-            "RAG",
+        AppLogEvent::success(
+            "SimpleRAG",
             format!("🎉 Persona '{}' created successfully! ({} sources, {} chunks)",
                     persona.name, persona.source_count, total_chunks)
-        ));
+        ).emit_to_frontend(&app_handle);
 
         println!("=== [SimpleRAG] RAG Persona Creation Complete ===\n");
         Ok(persona)
@@ -526,6 +470,32 @@ impl SimpleRagManager {
                         });
                     }
                 }
+            }
+        } else if item.source_type == "screenshot" {
+            // Handle screenshot format - use VLM caption as single chunk
+            if let Some(caption) = content_json.get("caption").and_then(|c| c.as_str()) {
+                let file_path = content_json.get("file_path")
+                    .and_then(|p| p.as_str())
+                    .unwrap_or("");
+
+                let timestamp = content_json.get("timestamp")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("");
+
+                // Create single chunk with full caption + metadata
+                let chunk_text = format!(
+                    "[Screenshot from {}]\n{}\nSource: {}",
+                    timestamp, caption, file_path
+                );
+
+                chunks.push(SimpleRagChunk {
+                    id: format!("{}_0", item.id),
+                    text: chunk_text,
+                    source_id: item.id.clone(),
+                    source_type: "screenshot".to_string(),
+                    source_name: item.title.clone(),
+                    chunk_index: 0,
+                });
             }
         }
 

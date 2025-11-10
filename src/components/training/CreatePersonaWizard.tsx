@@ -109,10 +109,27 @@ export const CreatePersonaWizard: React.FC<CreatePersonaWizardProps> = ({
 
     let unlistenProgress: UnlistenFn | null = null;
     let unlistenLog: UnlistenFn | null = null;
+    let unlistenTest: UnlistenFn | null = null;
 
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       console.log('[CreatePersona] ✅ Tauri invoke API loaded');
+
+      // TEST EVENT SYSTEM FIRST
+      console.log('[CreatePersona] 🧪 TESTING EVENT SYSTEM BEFORE RAG CREATION...');
+      unlistenTest = await listen('test_event', (event) => {
+        console.log('✅✅✅ [CreatePersona] TEST EVENT RECEIVED!', event);
+        alert('EVENT SYSTEM WORKS! Received: ' + JSON.stringify(event.payload));
+      });
+
+      try {
+        await invoke('test_event_system');
+        console.log('[CreatePersona] ✅ Test event command executed');
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 sec to see if event arrives
+      } catch (testErr) {
+        console.error('❌ [CreatePersona] TEST EVENT FAILED:', testErr);
+        alert('EVENT SYSTEM TEST FAILED: ' + String(testErr));
+      }
 
       // Listen for real-time progress events from Rust backend
       console.log('[CreatePersona] 📡 Setting up event listener for "rag_progress"...');
@@ -156,13 +173,14 @@ export const CreatePersonaWizard: React.FC<CreatePersonaWizardProps> = ({
       console.log('[CreatePersona] Parameters:');
       console.log('  - name:', personaName);
       console.log('  - description:', personaDescription);
-      console.log('  - trainingItemIds:', Array.from(selectedItems));
+      console.log('  - training_item_ids:', Array.from(selectedItems));
 
       // Call backend to create RAG persona
+      // IMPORTANT: Use snake_case to match Rust parameter names!
       const persona = await invoke<any>('create_rag_persona', {
         name: personaName,
         description: personaDescription,
-        trainingItemIds: Array.from(selectedItems),
+        training_item_ids: Array.from(selectedItems),  // snake_case!
       });
 
       console.log('\n✅ [CreatePersona] INVOKE COMPLETED SUCCESSFULLY!');
@@ -175,6 +193,10 @@ export const CreatePersonaWizard: React.FC<CreatePersonaWizardProps> = ({
       setCreatedPersonaId(persona.id);
 
       // Clean up event listeners
+      if (unlistenTest) {
+        console.log('[CreatePersona] Cleaning up test listener');
+        unlistenTest();
+      }
       if (unlistenProgress) {
         console.log('[CreatePersona] Cleaning up progress listener');
         unlistenProgress();
@@ -209,6 +231,10 @@ export const CreatePersonaWizard: React.FC<CreatePersonaWizardProps> = ({
       console.error('========================================\n');
 
       // Clean up event listeners on error
+      if (unlistenTest) {
+        console.log('[CreatePersona] Cleaning up test listener');
+        unlistenTest();
+      }
       if (unlistenProgress) {
         console.log('[CreatePersona] Cleaning up progress listener');
         unlistenProgress();

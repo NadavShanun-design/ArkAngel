@@ -12,7 +12,15 @@
   
   <!-- Media Library (for audio processing) -->
   <key>NSAppleEventsUsageDescription</key>
-  <string>Pluely needs access to Apple Events for enhanced audio processing</string>
+  <string>ArkAngel needs access to Apple Events for enhanced audio processing and AI automation features</string>
+
+  <!-- Screen Recording (Required for UI-TARS Computer Control) -->
+  <key>NSScreenCaptureUsageDescription</key>
+  <string>ArkAngel needs screen recording access to enable AI computer control features. This allows the AI agent to see your screen and take actions on your behalf.</string>
+
+  <!-- Accessibility (Required for UI-TARS mouse/keyboard control) -->
+  <key>NSAccessibilityUsageDescription</key>
+  <string>ArkAngel needs accessibility access to control mouse and keyboard for AI automation features.</string>
   
   <!-- Privacy - Audio Processing -->
   <key>NSPrivacyAccessedAPITypes</key>
@@ -31,6 +39,10 @@
   <key>com.apple.security.device.microphone</key>
   <true/>
   <key>com.apple.security.device.audio-input</key>
+  <true/>
+
+  <!-- Screen Capture Entitlement (Required for UI-TARS) -->
+  <key>com.apple.security.cs.disable-library-validation</key>
   <true/>
 </dict>
 </plist>

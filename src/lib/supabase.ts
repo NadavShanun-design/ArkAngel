@@ -111,3 +111,100 @@ export const updateProfile = async (
 
   return data
 }
+
+
+// ==========================================
+// USAGE TRACKING FUNCTIONS
+// ==========================================
+
+/**
+ * Log feature usage for a user
+ */
+export const logUsage = async (
+  userId: string,
+  feature: string,
+  amount: number,
+  usageType: string,
+  metadata?: Record<string, any>
+) => {
+  const { data, error } = await supabase.rpc('log_usage', {
+    p_user_id: userId,
+    p_feature: feature,
+    p_amount: amount,
+    p_usage_type: usageType,
+    p_metadata: metadata || {},
+  })
+
+  if (error) {
+    console.error('Failed to log usage:', error)
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+/**
+ * Get today's usage for a feature
+ */
+export const getTodayUsage = async (
+  userId: string,
+  feature: string
+): Promise<number> => {
+  const { data, error } = await supabase.rpc('get_today_usage', {
+    p_user_id: userId,
+    p_feature: feature,
+  })
+
+  if (error) {
+    console.error('Failed to get today usage:', error)
+    throw new Error(error.message)
+  }
+
+  return data || 0
+}
+
+/**
+ * Get this month's usage for a feature
+ */
+export const getMonthUsage = async (
+  userId: string,
+  feature: string
+): Promise<number> => {
+  const { data, error } = await supabase.rpc('get_month_usage', {
+    p_user_id: userId,
+    p_feature: feature,
+  })
+
+  if (error) {
+    console.error('Failed to get month usage:', error)
+    throw new Error(error.message)
+  }
+
+  return data || 0
+}
+
+/**
+ * Get all usage for today for all features
+ */
+export const getAllTodayUsage = async (userId: string) => {
+  const today = new Date().toISOString().split('T')[0]
+  
+  const { data, error } = await supabase
+    .from('usage_logs')
+    .select('feature, amount')
+    .eq('user_id', userId)
+    .eq('date', today)
+
+  if (error) {
+    console.error('Failed to get all today usage:', error)
+    throw new Error(error.message)
+  }
+
+  // Sum up usage by feature
+  const usage: Record<string, number> = {}
+  data.forEach((row) => {
+    usage[row.feature] = (usage[row.feature] || 0) + parseFloat(row.amount)
+  })
+
+  return usage
+}

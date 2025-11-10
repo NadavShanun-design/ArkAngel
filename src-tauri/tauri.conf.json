@@ -15,18 +15,19 @@
       {
         "title": "ArkAngel - AI Assistant",
         "width": 700,
-        "height": 54,
+        "height": 62,
         "decorations": false,
         "transparent": true,
-        "alwaysOnTop": false,
-        "resizable": false,
+        "alwaysOnTop": true,
+        "resizable": true,
         "visibleOnAllWorkspaces": true,
         "skipTaskbar": false,
         "visible": true,
-        "center": false,
+        "center": true,
         "contentProtected": false,
         "focus": false,
-        "acceptFirstMouse": true
+        "acceptFirstMouse": true,
+        "dragDropEnabled": false
       }
     ],
     "security": { "csp": null }

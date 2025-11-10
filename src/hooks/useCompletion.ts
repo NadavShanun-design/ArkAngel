@@ -86,6 +86,27 @@ export const useCompletion = () => {
         }));
       }
 
+      // === AUTOMATIC SCREENSHOT CAPTURE ===
+      try {
+        // Check if screenshot capture is enabled (default: true)
+        const screenshotEnabled = localStorage.getItem('auto-capture-screenshots') !== 'false';
+
+        if (screenshotEnabled) {
+          // Small delay to ensure UI is in final state (150ms)
+          await new Promise(resolve => setTimeout(resolve, 150));
+
+          // Capture screenshot in background
+          const { invoke } = await import('@tauri-apps/api/core');
+          const screenshotInfo = await invoke('capture_screenshot');
+
+          console.log('[Screenshot] Captured:', screenshotInfo);
+        }
+      } catch (error) {
+        // Non-blocking: If screenshot fails, continue with prompt
+        console.error('[Screenshot] Failed to capture (continuing anyway):', error);
+      }
+      // === END SCREENSHOT CAPTURE ===
+
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -102,30 +123,62 @@ export const useCompletion = () => {
       try {
         let fullResponse = "";
 
-        // Gather optimized context from enabled files with smart chunking
-        let fileContext: string[] | undefined = undefined;
-        try {
-          const { invoke } = await import('@tauri-apps/api/core');
-          // Use the new optimized context system with smart chunking
-          fileContext = await invoke<string[]>('get_optimized_file_context');
-          console.log(`[useCompletion] Loaded ${fileContext?.length || 0} context chunks from uploaded files`);
-        } catch (error) {
-          console.warn("Failed to load optimized file context, falling back to summaries:", error);
-          // Fallback to the old summary system
-          try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            const files = await invoke<any[]>('list_uploaded_files');
-            fileContext = (files || [])
-              .filter((f: any) => f?.is_context_enabled)
-              .map((f: any) => {
-                const s = (f?.summary && String(f.summary).trim().length > 0)
-                  ? String(f.summary)
-                  : `File ${f?.name || f?.id}: ${String(f?.content || '').slice(0, 200)}...`;
-                return s;
-              });
-          } catch (fallbackError) {
-            console.warn("Failed to load file summaries:", fallbackError);
-          }
+        // Get settings and persona info first (needed for parallel loading decisions)
+        const settings = getSettings();
+        const activePersona = settings?.personas?.find((p: any) => p.id === settings?.currentPersonaId);
+        let systemPrompt = activePersona?.prompt || settings?.systemPrompt || undefined;
+
+        // ⚡ PARALLEL CONTEXT LOADING - Load file context and RAG context simultaneously
+        console.log('[useCompletion] ⚡ Starting parallel context loading...');
+        const startTime = performance.now();
+
+        const { invoke } = await import('@tauri-apps/api/core');
+
+        // Create parallel promises for context loading
+        const contextPromises: Promise<any>[] = [
+          // Promise 1: File context loading
+          invoke<string[]>('get_optimized_file_context').catch(async (error) => {
+            console.warn("Failed to load optimized file context, falling back to summaries:", error);
+            try {
+              const files = await invoke<any[]>('list_uploaded_files');
+              return (files || [])
+                .filter((f: any) => f?.is_context_enabled)
+                .map((f: any) => {
+                  const s = (f?.summary && String(f.summary).trim().length > 0)
+                    ? String(f.summary)
+                    : `File ${f?.name || f?.id}: ${String(f?.content || '').slice(0, 200)}...`;
+                  return s;
+                });
+            } catch (fallbackError) {
+              console.warn("Failed to load file summaries:", fallbackError);
+              return undefined;
+            }
+          }),
+
+          // Promise 2: RAG context loading (conditional)
+          activePersona?.ragEnabled && activePersona?.ragSystemId
+            ? invoke<string>('get_rag_full_context', {
+                personaId: activePersona.ragSystemId
+              }).catch((error) => {
+                console.error('[useCompletion] RAG query failed:', error);
+                return '';
+              })
+            : Promise.resolve('')
+        ];
+
+        // Wait for all context to load in parallel
+        const [fileContext, ragContext] = await Promise.all(contextPromises);
+
+        const loadTime = performance.now() - startTime;
+        console.log(`[useCompletion] ⚡ Parallel context loading completed in ${loadTime.toFixed(2)}ms`);
+        console.log(`[useCompletion] - File context: ${fileContext?.length || 0} chunks`);
+        console.log(`[useCompletion] - RAG context: ${ragContext?.length || 0} chars`);
+
+        // Inject RAG context into system prompt if available
+        if (ragContext && ragContext.length > 0) {
+          systemPrompt = `${systemPrompt || ''}\n\n${ragContext}\n\n` +
+            `The above is your knowledge base. Use it to provide accurate, contextual responses based on the training data.`;
+          console.log('[useCompletion] RAG context injected into system prompt');
         }
 
         // Import feature flags to determine endpoint
@@ -133,39 +186,6 @@ export const useCompletion = () => {
         const { getCurrentUserId } = await import('@/lib/user-helper');
         const url = getChatEndpoint();
         console.log("[ui] Connecting to sidecar:", url);
-
-        // Get active persona prompt
-        const settings = getSettings();
-        const activePersona = settings?.personas?.find((p: any) => p.id === settings?.currentPersonaId);
-        let systemPrompt = activePersona?.prompt || settings?.systemPrompt || undefined;
-
-        // RAG Integration: Load full context if enabled for this persona
-        if (activePersona?.ragEnabled && activePersona?.ragSystemId) {
-          try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            console.log('[useCompletion] RAG enabled, loading full context:', activePersona.ragSystemId);
-
-            // Get full context from RAG persona (optimized for long-context LLMs)
-            const fullContext = await invoke<string>('get_rag_full_context', {
-              personaId: activePersona.ragSystemId
-            });
-
-            if (fullContext && fullContext.length > 0) {
-              console.log(`[useCompletion] Loaded RAG context (${fullContext.length} chars)`);
-
-              // Inject full context into system prompt
-              systemPrompt = `${systemPrompt || ''}\n\n${fullContext}\n\n` +
-                `The above is your knowledge base. Use it to provide accurate, contextual responses based on the training data.`;
-
-              console.log('[useCompletion] RAG context injected into system prompt');
-            } else {
-              console.log('[useCompletion] No RAG context available');
-            }
-          } catch (error) {
-            console.error('[useCompletion] RAG query failed:', error);
-            // Continue without RAG if it fails - don't break the user experience
-          }
-        }
 
         const res = await fetch(url, {
           method: "POST",

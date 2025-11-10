@@ -103,24 +103,69 @@ impl AgentState {
 }
 
 #[tauri::command]
-pub fn check_agent_permissions() -> Result<bool, String> {
+pub fn check_agent_permissions() -> Result<serde_json::Value, String> {
     #[cfg(target_os = "macos")]
     {
-        // On macOS, we need to check for Screen Recording and Accessibility permissions
-        // This is a simplified check - in a real implementation, you'd use macOS APIs
-        // For now, we'll return true and let the user handle permissions manually
-        println!("[Agent] Checking macOS permissions (Screen Recording & Accessibility)");
+        use std::process::Command;
 
-        // You can implement actual permission checks using macOS APIs here
-        // For example, using CGPreflightScreenCaptureAccess() for Screen Recording
+        println!("[Agent] Checking macOS permissions...");
 
-        Ok(true) // Assume permissions are granted for now
+        // Check if Node.js/npx is available (required for UI-TARS)
+        let npx_check = Command::new("npx").arg("--version").output();
+        let node_available = npx_check.is_ok();
+
+        let node_version = if node_available {
+            if let Ok(output) = npx_check {
+                String::from_utf8_lossy(&output.stdout).trim().to_string()
+            } else {
+                "unknown".to_string()
+            }
+        } else {
+            "not_installed".to_string()
+        };
+
+        // Return detailed permission information
+        let permissions = serde_json::json!({
+            "screenRecording": {
+                "status": "manual_check_required",
+                "required": true,
+                "instruction": "1. Open System Settings\n2. Go to Privacy & Security → Screen Recording\n3. Enable ArkAngel in the list\n4. Restart the app if needed"
+            },
+            "accessibility": {
+                "status": "manual_check_required",
+                "required": true,
+                "instruction": "1. Open System Settings\n2. Go to Privacy & Security → Accessibility\n3. Enable ArkAngel in the list\n4. Restart the app if needed"
+            },
+            "node": {
+                "status": if node_available { "available" } else { "missing" },
+                "version": node_version,
+                "required": true,
+                "instruction": if node_available {
+                    format!("✅ Node.js is installed (npx version: {})", node_version)
+                } else {
+                    "❌ Install Node.js >= 22 from nodejs.org".to_string()
+                }
+            },
+            "platform": "macOS",
+            "note": "You must manually grant Screen Recording and Accessibility permissions in System Settings before the agent will work. The app will request these permissions when you start the agent."
+        });
+
+        println!("[Agent] Permission check complete. Node.js: {}", if node_available { "✓" } else { "✗" });
+
+        Ok(permissions)
     }
 
     #[cfg(not(target_os = "macos"))]
     {
-        // On other platforms, permissions are usually not required
-        Ok(true)
+        let permissions = serde_json::json!({
+            "screenRecording": {"status": "not_required", "required": false},
+            "accessibility": {"status": "not_required", "required": false},
+            "node": {"status": "check_manually", "required": true, "instruction": "Ensure Node.js >= 22 is installed"},
+            "platform": "non-macOS",
+            "note": "UI-TARS permissions are primarily for macOS. Ensure Node.js is installed."
+        });
+
+        Ok(permissions)
     }
 }
 

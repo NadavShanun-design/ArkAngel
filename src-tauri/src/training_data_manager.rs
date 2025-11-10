@@ -465,4 +465,69 @@ impl TrainingDataManager {
         println!("[TrainingDataManager] Cleared all training data");
         Ok(())
     }
+
+    /// Add screenshot to training data
+    pub fn add_screenshot_to_training(
+        &self,
+        screenshot_id: String,
+        file_path: String,
+        caption: String,
+        width: u32,
+        height: u32,
+        timestamp: String,
+    ) -> Result<TrainingDataItem> {
+        let id = format!("training_screenshot_{}", screenshot_id);
+
+        // Format content for RAG system (structured JSON)
+        let structured_content = self.format_screenshot_for_training(&caption, &file_path, width, height, &timestamp);
+
+        let item = TrainingDataItem {
+            id: id.clone(),
+            source_type: "screenshot".to_string(),
+            title: format!("Screenshot: {}", timestamp),
+            content: structured_content,
+            metadata: TrainingMetadata {
+                source_id: screenshot_id.clone(),
+                source_date: None,
+                source_time: None,
+                message_count: None,
+                session_id: None,
+                original_filename: Some(file_path.clone()),
+            },
+            added_at: Utc::now().to_rfc3339(),
+            format: "json".to_string(),
+        };
+
+        // Save individual training file
+        self.save_training_item(&item)?;
+
+        // Update index
+        self.add_to_index(&item)?;
+
+        println!(
+            "[TrainingDataManager] Added screenshot to training: {} ({}x{})",
+            screenshot_id, width, height
+        );
+
+        Ok(item)
+    }
+
+    /// Format screenshot content for RAG training
+    fn format_screenshot_for_training(&self, caption: &str, file_path: &str, width: u32, height: u32, timestamp: &str) -> String {
+        // Create RAG-optimized structure for screenshot content
+        let training_format = serde_json::json!({
+            "type": "screenshot",
+            "caption": caption,
+            "file_path": file_path,
+            "dimensions": {
+                "width": width,
+                "height": height
+            },
+            "timestamp": timestamp,
+            "format_version": "1.0",
+            "optimized_for": "rag_training"
+        });
+
+        serde_json::to_string_pretty(&training_format).unwrap_or_else(|_| caption.to_string())
+    }
 }

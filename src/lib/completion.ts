@@ -41,7 +41,7 @@ export const formatMessageForProvider = (
         return;
       }
 
-      if (provider.id === "openai" || provider.id === "grok") {
+      if (provider.id === "openai" || provider.id === "grok" || provider.id === "groq") {
         // Since we don't store images in history, just add text content
         messages.push({ role: msg.role, content: msg.content });
       } else if (provider.id === "claude") {
@@ -119,7 +119,7 @@ export const formatMessageForProvider = (
         messages.push({ role: "user", parts });
       }
     }
-  } else if (provider.id === "openai" || provider.id === "grok") {
+  } else if (provider.id === "openai" || provider.id === "grok" || provider.id === "groq") {
     if (images.length === 0) {
       const content =
         systemPrompt && provider.id === "gemini"

@@ -316,13 +316,29 @@ function createAgent(opts: { providerId?: string; model?: string; apiKey?: strin
   const model = opts.model || 'gpt-4o-mini'
   const apiKey = opts.apiKey || process.env.OPENAI_API_KEY
   if (!apiKey) {
-    throw new Error('OPENAI_API_KEY is missing. Provide it in request body or environment.')
+    throw new Error('API key is missing. Provide it in request body or environment.')
   }
 
-  if (provider !== 'openai') {
-    console.warn('[sidecar] Only OpenAI is wired here; using ChatOpenAI with provided key.')
+  // Configure LLM based on provider
+  let llm: any
+  if (provider === 'groq') {
+    console.log('[sidecar] Using Groq provider for ultra-fast inference')
+    llm = new ChatOpenAI({
+      model,
+      temperature: 0.7,  // Optimal for Groq
+      streaming: true,
+      apiKey,
+      configuration: {
+        baseURL: 'https://api.groq.com/openai/v1'
+      }
+    })
+  } else if (provider === 'openai') {
+    console.log('[sidecar] Using OpenAI provider')
+    llm = new ChatOpenAI({ model, temperature: 0.5, streaming: true, apiKey })
+  } else {
+    console.warn(`[sidecar] Provider ${provider} not explicitly supported, attempting OpenAI-compatible API`)
+    llm = new ChatOpenAI({ model, temperature: 0.5, streaming: true, apiKey })
   }
-  const llm = new ChatOpenAI({ model, temperature: 0.5, streaming: true, apiKey })
   
   // Add a single local file tool to fetch content by id
   const uploadsDir = path.resolve(process.cwd(), '..', 'uploads')

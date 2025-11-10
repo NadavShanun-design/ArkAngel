@@ -139,6 +139,49 @@ export const providers = [
     },
   },
   {
+    id: "groq",
+    name: "Groq ⚡ (Fastest)",
+    baseUrl: "https://api.groq.com/openai/v1",
+    chatEndpoint: "/chat/completions",
+    authType: "bearer",
+    defaultModel: "llama-3.3-70b-versatile",
+    response: {
+      contentPath: "choices[0].message.content",
+      usagePath: "usage",
+    },
+    input: {
+      text: {
+        placement:
+          "messages array (as string content in user/assistant messages)",
+        exampleStructure: {
+          role: "user",
+          content: "Your text message here",
+        },
+      },
+      image: {
+        type: "url_or_base64",
+        placement:
+          "messages array (as content items in user/assistant messages; content becomes array when including images)",
+        exampleStructure: {
+          role: "user",
+          content: [
+            { type: "text", text: "Describe this image:" },
+            {
+              type: "image_url",
+              image_url: { url: "https://example.com/image.jpg" },
+            },
+          ],
+        },
+      },
+    },
+    models: {
+      endpoint: "/models",
+      method: "GET",
+      responsePath: "data",
+      idKey: "id",
+    },
+  },
+  {
     id: "gemini",
     name: "Gemini (Google)",
     baseUrl: "https://generativelanguage.googleapis.com",

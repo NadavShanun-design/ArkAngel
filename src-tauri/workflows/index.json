@@ -1,0 +1,76 @@
+{
+  "screenshots": [
+    {
+      "id": "8884469e-0e05-4b04-9787-33c792df3ae3",
+      "file_path": "./workflows/screenshot_8884469e-0e05-4b04-9787-33c792df3ae3.png",
+      "timestamp": "2025-11-10T05:50:08.501207+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 4313423,
+      "added_to_training": false
+    },
+    {
+      "id": "b9743702-b1be-4436-ba2f-cb6d25d8158b",
+      "file_path": "./workflows/screenshot_b9743702-b1be-4436-ba2f-cb6d25d8158b.png",
+      "timestamp": "2025-11-10T05:50:08.420155+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 4313514,
+      "added_to_training": false
+    },
+    {
+      "id": "8bc9f53c-ffa6-440c-b96a-8727857f3c3a",
+      "file_path": "./workflows/screenshot_8bc9f53c-ffa6-440c-b96a-8727857f3c3a.png",
+      "timestamp": "2025-11-10T05:50:07.819299+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 4313514,
+      "added_to_training": false
+    },
+    {
+      "id": "e93ee439-cd0f-4aa2-b1b6-f76c2630c790",
+      "file_path": "./workflows/screenshot_e93ee439-cd0f-4aa2-b1b6-f76c2630c790.png",
+      "timestamp": "2025-11-10T05:50:07.784003+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 4313514,
+      "added_to_training": false
+    },
+    {
+      "id": "02d7bc38-e840-472c-b91e-33a8ec907001",
+      "file_path": "./workflows/screenshot_02d7bc38-e840-472c-b91e-33a8ec907001.png",
+      "timestamp": "2025-11-10T05:50:07.717229+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 4313530,
+      "added_to_training": false
+    },
+    {
+      "id": "d6c8a7c5-2a51-42d6-b5a3-fa4f5e27c336",
+      "file_path": "./workflows/screenshot_d6c8a7c5-2a51-42d6-b5a3-fa4f5e27c336.png",
+      "timestamp": "2025-11-10T05:50:04.190330+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 4316543,
+      "added_to_training": false
+    },
+    {
+      "id": "1c281426-ddfc-4dab-bf69-1016cd1b9a9e",
+      "file_path": "./workflows/screenshot_1c281426-ddfc-4dab-bf69-1016cd1b9a9e.png",
+      "timestamp": "2025-11-10T05:50:03.917449+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 4316543,
+      "added_to_training": false
+    },
+    {
+      "id": "9c60988b-6ac2-4fa7-9fb3-b0c160e8093f",
+      "file_path": "./workflows/screenshot_9c60988b-6ac2-4fa7-9fb3-b0c160e8093f.png",
+      "timestamp": "2025-11-10T05:50:01.918714+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 4316278,
+      "added_to_training": false
+    }
+  ]
+}
