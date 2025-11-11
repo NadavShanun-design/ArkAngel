@@ -86,24 +86,31 @@ export const useCompletion = () => {
         }));
       }
 
-      // === AUTOMATIC SCREENSHOT CAPTURE ===
-      try {
-        // Check if screenshot capture is enabled (default: true)
-        const screenshotEnabled = localStorage.getItem('auto-capture-screenshots') !== 'false';
-
-        if (screenshotEnabled) {
-          // Small delay to ensure UI is in final state (150ms)
-          await new Promise(resolve => setTimeout(resolve, 150));
-
-          // Capture screenshot in background
-          const { invoke } = await import('@tauri-apps/api/core');
-          const screenshotInfo = await invoke('capture_screenshot');
-
-          console.log('[Screenshot] Captured:', screenshotInfo);
-        }
-      } catch (error) {
-        // Non-blocking: If screenshot fails, continue with prompt
-        console.error('[Screenshot] Failed to capture (continuing anyway):', error);
+      // === AUTOMATIC SCREENSHOT CAPTURE - DISABLED FOR SPEED ===
+      // Screenshot capture is now DISABLED by default for faster responses
+      // Users can manually capture screenshots if needed
+      // If you want to re-enable, set auto-capture-screenshots to 'true' in localStorage
+      const screenshotEnabled = localStorage.getItem('auto-capture-screenshots') === 'true';
+      if (screenshotEnabled) {
+        console.log('[Screenshot] Auto-capture is enabled, capturing in background...');
+        // Fire and forget
+        (async () => {
+          try {
+            await new Promise(resolve => setTimeout(resolve, 150));
+            const { invoke } = await import('@tauri-apps/api/core');
+            const settings = getSettings();
+            const ollamaUrl = settings?.ollamaUrl || 'http://localhost:11434';
+            try {
+              const screenshotInfo = await invoke('capture_screenshot_with_caption', { ollamaUrl });
+              console.log('[Screenshot] ✅ Captured with caption:', screenshotInfo);
+            } catch {
+              const screenshotInfo = await invoke('capture_screenshot');
+              console.log('[Screenshot] ✅ Captured (no caption):', screenshotInfo);
+            }
+          } catch (error) {
+            console.error('[Screenshot] ❌ Failed:', error);
+          }
+        })();
       }
       // === END SCREENSHOT CAPTURE ===
 
@@ -123,62 +130,85 @@ export const useCompletion = () => {
       try {
         let fullResponse = "";
 
-        // Get settings and persona info first (needed for parallel loading decisions)
+        // Get settings and persona info first
         const settings = getSettings();
         const activePersona = settings?.personas?.find((p: any) => p.id === settings?.currentPersonaId);
         let systemPrompt = activePersona?.prompt || settings?.systemPrompt || undefined;
 
-        // ⚡ PARALLEL CONTEXT LOADING - Load file context and RAG context simultaneously
-        console.log('[useCompletion] ⚡ Starting parallel context loading...');
-        const startTime = performance.now();
-
         const { invoke } = await import('@tauri-apps/api/core');
 
-        // Create parallel promises for context loading
-        const contextPromises: Promise<any>[] = [
-          // Promise 1: File context loading
-          invoke<string[]>('get_optimized_file_context').catch(async (error) => {
-            console.warn("Failed to load optimized file context, falling back to summaries:", error);
-            try {
-              const files = await invoke<any[]>('list_uploaded_files');
-              return (files || [])
-                .filter((f: any) => f?.is_context_enabled)
-                .map((f: any) => {
-                  const s = (f?.summary && String(f.summary).trim().length > 0)
-                    ? String(f.summary)
-                    : `File ${f?.name || f?.id}: ${String(f?.content || '').slice(0, 200)}...`;
-                  return s;
-                });
-            } catch (fallbackError) {
-              console.warn("Failed to load file summaries:", fallbackError);
-              return undefined;
-            }
-          }),
+        // OPTIMIZED: Only load context when actually needed (RAG enabled or files uploaded)
+        let fileContext: string[] | undefined = undefined;
+        let ragData = { textContext: '', imagePaths: [] };
 
-          // Promise 2: RAG context loading (conditional)
-          activePersona?.ragEnabled && activePersona?.ragSystemId
-            ? invoke<string>('get_rag_full_context', {
-                personaId: activePersona.ragSystemId
-              }).catch((error) => {
-                console.error('[useCompletion] RAG query failed:', error);
-                return '';
+        // Check if we need to load file context (only if user has uploaded files)
+        const hasFiles = localStorage.getItem('has_uploaded_files') === 'true';
+
+        // Check if RAG is enabled
+        const ragEnabled = activePersona?.ragEnabled && activePersona?.ragSystemId;
+
+        if (hasFiles || ragEnabled) {
+          console.log('[useCompletion] Loading context (files or RAG enabled)...');
+          const startTime = performance.now();
+
+          const contextPromises: Promise<any>[] = [];
+
+          // Only load files if we have them
+          if (hasFiles) {
+            contextPromises.push(
+              invoke<string[]>('get_optimized_file_context').catch(async (error) => {
+                console.warn("Failed to load file context:", error);
+                return undefined;
               })
-            : Promise.resolve('')
-        ];
+            );
+          } else {
+            contextPromises.push(Promise.resolve(undefined));
+          }
 
-        // Wait for all context to load in parallel
-        const [fileContext, ragContext] = await Promise.all(contextPromises);
+          // Only load RAG if enabled
+          if (ragEnabled) {
+            contextPromises.push(
+              (async () => {
+                try {
+                  const ragResults = await invoke<Array<{
+                    text: string;
+                    score: number;
+                    image_path?: string;
+                  }>>('query_openai_rag', {
+                    personaId: activePersona.ragSystemId,
+                    query: input,
+                    apiKey: getSettings()?.openAiApiKey || '',
+                    topK: 5
+                  });
 
-        const loadTime = performance.now() - startTime;
-        console.log(`[useCompletion] ⚡ Parallel context loading completed in ${loadTime.toFixed(2)}ms`);
-        console.log(`[useCompletion] - File context: ${fileContext?.length || 0} chunks`);
-        console.log(`[useCompletion] - RAG context: ${ragContext?.length || 0} chars`);
+                  const textContext = ragResults.map(r => r.text).join('\n\n');
+                  const imagePaths = ragResults.map(r => r.image_path).filter((path): path is string => !!path);
+
+                  return { textContext, imagePaths };
+                } catch (error) {
+                  console.error('[useCompletion] RAG query failed:', error);
+                  return { textContext: '', imagePaths: [] };
+                }
+              })()
+            );
+          } else {
+            contextPromises.push(Promise.resolve({ textContext: '', imagePaths: [] }));
+          }
+
+          const [fileCtx, ragCtx] = await Promise.all(contextPromises);
+          fileContext = fileCtx;
+          ragData = ragCtx;
+
+          const loadTime = performance.now() - startTime;
+          console.log(`[useCompletion] Context loaded in ${loadTime.toFixed(2)}ms`);
+        } else {
+          console.log('[useCompletion] ⚡ FAST PATH: No context loading needed, sending directly to AI');
+        }
 
         // Inject RAG context into system prompt if available
-        if (ragContext && ragContext.length > 0) {
-          systemPrompt = `${systemPrompt || ''}\n\n${ragContext}\n\n` +
+        if (ragData.textContext && ragData.textContext.length > 0) {
+          systemPrompt = `${systemPrompt || ''}\n\n${ragData.textContext}\n\n` +
             `The above is your knowledge base. Use it to provide accurate, contextual responses based on the training data.`;
-          console.log('[useCompletion] RAG context injected into system prompt');
         }
 
         // Import feature flags to determine endpoint
@@ -197,7 +227,8 @@ export const useCompletion = () => {
             model: getSettings()?.selectedModel || getSettings()?.customModel || "gpt-4o-mini",
             providerId: getSettings()?.selectedProvider || "openai",
             userId: getCurrentUserId(), // Required for Composio
-            fileContext,
+            fileSummaries: fileContext, // Sidecar expects 'fileSummaries' key
+            ragImages: ragData.imagePaths || [],  // NEW: Pass screenshot paths from RAG
             // Note: files are processed with smart chunking and included in the system prompt.
           }),
           signal: abortControllerRef.current.signal,

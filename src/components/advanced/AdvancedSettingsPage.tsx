@@ -6,7 +6,7 @@ import { getAvailableIntegrations, Integration } from "@/components/integrations
 import { loadChatHistory, clearChatHistory, loadSettingsFromStorage, saveSettingsToStorage } from "@/lib/storage";
 import { createPersona, updatePersona, deletePersona } from "@/lib/personas";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Settings, Trash2, Plus, Edit2, Check, X, Star, FileText, FileCode, FileImage, FileVideo, FileAudio, File, Eye, Square, CheckSquare } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, Trash2, Plus, Edit2, Check, X, Star, FileText, FileCode, FileImage, FileVideo, FileAudio, File, Eye, Square, CheckSquare, AlertCircle } from "lucide-react";
 import { STORAGE_KEYS } from "@/config";
 import { Persona, SettingsState } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +14,7 @@ import { createCheckoutSession, createPortalSession, STRIPE_PRICES, type Subscri
 import { TranscriptViewer } from "@/components/transcripts";
 import { CreatePersonaWizard } from "@/components/training";
 import ReactMarkdown from "react-markdown";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 type SectionKey =
   | "profile"
@@ -26,6 +27,7 @@ type SectionKey =
   | "payments"
   | "documents"
   | "transcripts"
+  | "photos"
   | "training"
   | "manage-data";
 
@@ -40,6 +42,7 @@ const sections: { key: SectionKey; label: string }[] = [
   { key: "payments", label: "Payments" },
   { key: "documents", label: "Documents" },
   { key: "transcripts", label: "Transcripts" },
+  { key: "photos", label: "Photos" },
   { key: "training", label: "Training" },
   { key: "manage-data", label: "Manage Data" },
 ];
@@ -101,6 +104,7 @@ export const AdvancedSettingsPage: React.FC = () => {
             {active === "payments" && <PaymentsSection />}
             {active === "documents" && <DocumentsSection />}
             {active === "transcripts" && <TranscriptsSection />}
+            {active === "photos" && <PhotosSection />}
             {active === "training" && <TrainingSection />}
             {active === "manage-data" && <ManageDataSection />}
           </div>
@@ -2729,6 +2733,526 @@ const DocumentsSection: React.FC = () => {
         <div className="pt-2">
           <p className="text-xs text-muted-foreground text-center">
             {documents.length} document{documents.length !== 1 ? 's' : ''} stored locally
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const PhotosSection: React.FC = () => {
+  const [screenshots, setScreenshots] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Selection mode for adding to training (like DocumentsSection)
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [generatingCaptions, setGeneratingCaptions] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    loadScreenshots();
+  }, []);
+
+  const loadScreenshots = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const data = await invoke<any[]>('get_all_screenshots');
+      setScreenshots(data);
+      console.log(`[Photos] Loaded ${data.length} screenshots`);
+    } catch (err) {
+      console.error('[Photos] Failed to load screenshots:', err);
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Selection mode functions (like DocumentsSection)
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    setSelectedPhotos(new Set());
+    setSaveSuccess(false);
+    setError(null);
+  };
+
+  const togglePhotoSelection = (photoId: string) => {
+    setSelectedPhotos((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(photoId)) {
+        newSet.delete(photoId);
+      } else {
+        newSet.add(photoId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSaveToTraining = async () => {
+    if (selectedPhotos.size === 0) return;
+
+    // Check if using Ollama (locally hosted Stream) or OpenAI
+    const useOllama = confirm(
+      `Add ${selectedPhotos.size} photo${selectedPhotos.size !== 1 ? 's' : ''} to training?\n\n` +
+      `Choose caption provider:\n` +
+      `OK = Use Ollama (locally hosted, FREE, private)\n` +
+      `Cancel = Use OpenAI GPT-4o-mini (requires API key, costs ~$0.0002 per image)`
+    );
+
+    const provider = useOllama ? 'ollama' : 'openai';
+    const apiKey = useOllama ? '' : localStorage.getItem('openai-api-key');
+
+    if (!useOllama && !apiKey) {
+      alert('Please set your OpenAI API key in Settings first, or use Ollama (locally hosted) instead.');
+      return;
+    }
+
+    setSaving(true);
+    setSaveSuccess(false);
+    setError(null);
+
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+
+      // Get selected photos data
+      const selectedPhotosData = screenshots.filter(photo => selectedPhotos.has(photo.id));
+
+      // Process each photo
+      for (const photo of selectedPhotosData) {
+        setGeneratingCaptions((prev) => new Set(prev).add(photo.id));
+
+        try {
+          if (provider === 'ollama') {
+            // Use Ollama VLM (locally hosted Stream)
+            // First generate caption with Ollama
+            const captionResult = await invoke<any>('generate_caption_with_ollama', {
+              screenshotId: photo.id,
+              ollamaUrl: 'http://localhost:11434',
+              model: 'moondream:latest',
+            });
+
+            // Then add to training with the caption
+            await invoke('add_screenshot_to_training_with_caption', {
+              screenshotId: photo.id,
+              caption: captionResult.caption,
+            });
+          } else {
+            // Use OpenAI GPT-4o-mini
+            const result = await invoke<any>('add_screenshot_to_training', {
+              screenshotId: photo.id,
+              apiKey,
+              provider: 'openai',
+            });
+            console.log(`[Photos] Added ${photo.id} to training, cost: $${result.cost.toFixed(6)}`);
+          }
+
+          // Update local state
+          setScreenshots((prev) =>
+            prev.map((s) =>
+              s.id === photo.id
+                ? { ...s, added_to_training: true, training_added_at: new Date().toISOString(), caption: photo.caption || 'Caption generated' }
+                : s
+            )
+          );
+        } catch (err) {
+          console.error(`[Photos] Failed to add ${photo.id} to training:`, err);
+          // Continue with other photos even if one fails
+        } finally {
+          setGeneratingCaptions((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(photo.id);
+            return newSet;
+          });
+        }
+      }
+
+      // Success!
+      setSaveSuccess(true);
+      setSelectedPhotos(new Set());
+      setSelectionMode(false);
+
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      console.error('Failed to save to training:', err);
+      setError(
+        err instanceof Error ? err.message : 'Failed to save to training'
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: string) => {
+    if (!confirm('Delete this photo? This cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('delete_screenshot', { screenshotId: photoId });
+      setScreenshots((prev) => prev.filter((s) => s.id !== photoId));
+      setSelectedPhotos((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(photoId);
+        return newSet;
+      });
+      console.log(`[Photos] Deleted screenshot: ${photoId}`);
+    } catch (err) {
+      console.error('[Photos] Failed to delete:', err);
+      alert(`Failed to delete: ${err}`);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!confirm(`Are you sure you want to delete all ${screenshots.length} photos? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      for (const photo of screenshots) {
+        await invoke('delete_screenshot', { screenshotId: photo.id });
+      }
+      await loadScreenshots();
+    } catch (err) {
+      console.error('[Photos] Failed to delete all photos:', err);
+      alert('Failed to delete all photos');
+    }
+  };
+
+  const formatTimestamp = (timestamp: string): string => {
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return timestamp;
+    }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const stats = useMemo(() => {
+    const totalSize = screenshots.reduce((sum, s) => sum + s.file_size, 0);
+    const inTraining = screenshots.filter((s) => s.added_to_training).length;
+    return {
+      total: screenshots.length,
+      inTraining,
+      totalSizeMB: (totalSize / (1024 * 1024)).toFixed(1),
+    };
+  }, [screenshots]);
+
+  if (loading) {
+    return (
+      <SpotlightArea className="p-12 border border-input/50 rounded-md bg-background/50 flex items-center justify-center">
+        <div className="text-sm text-muted-foreground">Loading photos...</div>
+      </SpotlightArea>
+    );
+  }
+
+  if (error && screenshots.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="flex flex-col items-center gap-4 max-w-md text-center">
+          <AlertCircle className="h-12 w-12 text-destructive" />
+          <h3 className="text-lg font-semibold">Failed to Load Photos</h3>
+          <p className="text-sm text-muted-foreground">{error}</p>
+          <Button onClick={loadScreenshots}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Test screenshot capture (with VLM caption if Ollama is available)
+  const handleTestScreenshot = async () => {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+
+      // Try to capture with VLM caption first (requires Ollama)
+      try {
+        const ollamaUrl = localStorage.getItem('ollama-url') || 'http://localhost:11434';
+        const result = await invoke('capture_screenshot_with_caption', { ollamaUrl });
+
+        const captionInfo = result.caption
+          ? `\n\n🤖 AI Caption Generated:\n${result.caption.substring(0, 150)}${result.caption.length > 150 ? '...' : ''}`
+          : '\n\nNote: Caption generation skipped (Ollama not running)';
+
+        alert(`✅ Screenshot captured successfully!${captionInfo}\n\nSaved to: ${result.file_path}\nSize: ${result.width}x${result.height}`);
+      } catch (captionError) {
+        // Fallback: Capture without caption
+        console.log('[Screenshot] VLM caption failed, capturing without caption:', captionError);
+        const result = await invoke('capture_screenshot');
+        alert(`✅ Screenshot captured successfully!\n\nSaved to: ${result.file_path}\nSize: ${result.width}x${result.height}\n\nNote: Caption generation skipped (Ollama not available)`);
+      }
+
+      await loadScreenshots();
+    } catch (err) {
+      alert(`❌ Screenshot capture failed!\n\n${err}\n\nMake sure you've granted Screen Recording permission in macOS System Settings:\n1. System Settings → Privacy & Security\n2. Scroll down to "Screen & System Audio Recording"\n3. Enable ArkAngel\n4. Restart the app`);
+    }
+  };
+
+  const openScreenRecordingSettings = async () => {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('open_screen_recording_settings');
+    } catch (err) {
+      // Fallback: Try to open with shell command
+      alert('Please manually open:\nSystem Settings → Privacy & Security → Screen & System Audio Recording\n\nThen enable ArkAngel and restart the app.');
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Photos</h2>
+          <p className="text-sm text-muted-foreground">
+            All photos captured by ArkAngel. Add photos to training to enable semantic search with metadata from locally hosted CLM (Stream).
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={handleTestScreenshot} size="sm" variant="outline">
+            📸 Test Capture
+          </Button>
+          {screenshots.length > 0 && (
+            <Button onClick={handleDeleteAll} size="sm" variant="destructive">
+              <Trash2 className="w-4 h-4 mr-1" />
+              Delete All
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Add to Training Button */}
+      {screenshots.length > 0 && (
+        <div className="mb-4">
+          <Button
+            onClick={
+              selectionMode && selectedPhotos.size > 0
+                ? handleSaveToTraining
+                : toggleSelectionMode
+            }
+            variant={selectionMode && selectedPhotos.size > 0 ? "default" : "outline"}
+            className="w-full"
+            disabled={saving}
+          >
+            {saving ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Saving...
+              </>
+            ) : saveSuccess ? (
+              <>
+                <Check className="w-4 h-4 mr-2" />
+                Saved to Training!
+              </>
+            ) : selectionMode ? (
+              selectedPhotos.size > 0 ? (
+                <>Save {selectedPhotos.size} to Training</>
+              ) : (
+                <>Cancel Selection</>
+              )
+            ) : (
+              <>
+                <Plus className="w-4 h-4 mr-2" />
+                Add to Training
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+
+      {/* Error message */}
+      {error && (
+        <div className="p-4 bg-destructive/10 text-destructive rounded-lg">
+          <p className="text-sm font-medium">{error}</p>
+        </div>
+      )}
+
+      {screenshots.length === 0 ? (
+        <SpotlightArea className="p-12 border border-input/50 rounded-md bg-background/50 flex flex-col items-center justify-center">
+          <FileImage className="h-16 w-16 text-muted-foreground/50 mb-4" />
+          <p className="text-lg text-muted-foreground">No photos captured yet</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Click the "📸 Test Capture" button above to capture your first screenshot!
+          </p>
+          <p className="text-xs text-muted-foreground mt-2 max-w-md text-center">
+            Note: Auto-capture on every message is disabled by default for performance. Use the Test button to capture screenshots manually when needed.
+          </p>
+        </SpotlightArea>
+      ) : (
+        <div className="space-y-2">
+          {screenshots.map((photo) => (
+            <SpotlightArea
+              key={photo.id}
+              className={cn(
+                "p-4 border border-input/50 rounded-md bg-background/50 transition-colors",
+                selectionMode ? "cursor-pointer hover:bg-accent/40" : "hover:bg-accent/20",
+                selectionMode && selectedPhotos.has(photo.id) && "bg-primary/10 border-primary"
+              )}
+              onClick={() => selectionMode && togglePhotoSelection(photo.id)}
+            >
+              <div className="flex items-start justify-between gap-4">
+                {/* Left: Image Thumbnail */}
+                <div className="flex items-start gap-3 flex-shrink-0">
+                  {/* Checkbox in selection mode */}
+                  {selectionMode && (
+                    <div className="mt-1">
+                      {selectedPhotos.has(photo.id) ? (
+                        <CheckSquare className="w-5 h-5 text-primary" />
+                      ) : (
+                        <Square className="w-5 h-5 text-muted-foreground" />
+                      )}
+                    </div>
+                  )}
+
+                  {/* Image thumbnail - Click to open */}
+                  <div
+                    className="relative w-32 h-20 bg-muted/30 rounded-md overflow-hidden border border-input/50 flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                    onClick={async (e) => {
+                      if (!selectionMode) {
+                        e.stopPropagation();
+                        try {
+                          const { open } = await import('@tauri-apps/plugin-opener');
+                          // Convert relative path to absolute
+                          const absolutePath = photo.file_path.replace('./workflows/', '/Users/nadavshanun/Downloads/ArkAngel2/src-tauri/workflows/');
+                          await open(absolutePath);
+                        } catch (err) {
+                          console.error('Failed to open screenshot:', err);
+                          alert(`Failed to open screenshot: ${err}`);
+                        }
+                      }
+                    }}
+                    title="Click to open in default viewer"
+                  >
+                    <img
+                      src={convertFileSrc(photo.file_path.replace('./workflows/', '/Users/nadavshanun/Downloads/ArkAngel2/src-tauri/workflows/'))}
+                      alt={`Screenshot from ${formatTimestamp(photo.timestamp)}`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        console.error('Failed to load image:', photo.file_path);
+                        e.currentTarget.src = '';
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                    {photo.added_to_training && (
+                      <div className="absolute top-1 right-1 bg-green-500/90 text-white text-[10px] px-1.5 py-0.5 rounded">
+                        ✓ Training
+                      </div>
+                    )}
+                    {/* Hover overlay */}
+                    {!selectionMode && (
+                      <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center">
+                        <Eye className="w-6 h-6 text-white opacity-0 hover:opacity-100 transition-opacity" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right: Metadata */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <FileImage className="w-4 h-4 text-primary flex-shrink-0" />
+                        <h3 className="font-medium text-sm truncate" title={`Photo ${photo.id}`}>
+                          Screenshot {photo.id.substring(0, 8)}
+                        </h3>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
+                        <span>{photo.width}×{photo.height} px</span>
+                        <span>{formatFileSize(photo.file_size)}</span>
+                        <span>{formatTimestamp(photo.timestamp)}</span>
+                        {photo.added_to_training && (
+                          <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-medium">
+                            In Training
+                          </span>
+                        )}
+                      </div>
+                      {/* Caption/Metadata from CLM (locally hosted Stream) */}
+                      {photo.caption ? (
+                        <div className="mt-2">
+                          <div className="text-xs text-muted-foreground mb-1 font-medium">CLM Metadata:</div>
+                          <p className="text-xs text-muted-foreground line-clamp-2 bg-muted/30 p-2 rounded">
+                            {photo.caption}
+                          </p>
+                          {photo.caption_generated_at && (
+                            <div className="text-[10px] text-muted-foreground mt-1">
+                              Generated {formatTimestamp(photo.caption_generated_at)}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mt-2 text-xs text-muted-foreground italic">
+                          No metadata yet. Add to training to generate with CLM (locally hosted Stream).
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action buttons (hidden in selection mode) */}
+                    {!selectionMode && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {generatingCaptions.has(photo.id) && (
+                          <div className="text-xs text-muted-foreground mr-2">
+                            <div className="animate-spin rounded-full h-3 w-3 border-2 border-primary border-t-transparent inline-block mr-1"></div>
+                            Generating...
+                          </div>
+                        )}
+                        <Button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              const { open } = await import('@tauri-apps/plugin-opener');
+                              const absolutePath = photo.file_path.replace('./workflows/', '/Users/nadavshanun/Downloads/ArkAngel2/src-tauri/workflows/');
+                              await open(absolutePath);
+                            } catch (err) {
+                              console.error('Failed to open screenshot:', err);
+                              alert(`Failed to open: ${err}`);
+                            }
+                          }}
+                          size="sm"
+                          variant="ghost"
+                          title="Open in default viewer"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePhoto(photo.id);
+                          }}
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          title="Delete photo"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </SpotlightArea>
+          ))}
+        </div>
+      )}
+
+      {screenshots.length > 0 && (
+        <div className="pt-2">
+          <p className="text-xs text-muted-foreground text-center">
+            {screenshots.length} photo{screenshots.length !== 1 ? 's' : ''} stored locally
+            {stats.inTraining > 0 && ` • ${stats.inTraining} in training`}
+            {stats.totalSizeMB !== '0.0' && ` • ${stats.totalSizeMB} MB total`}
           </p>
         </div>
       )}

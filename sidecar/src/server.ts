@@ -534,10 +534,80 @@ class StreamingMCPAgent {
   }
 }
 
+// FAST PATH: Simple streaming endpoint (no MCP, no tools, just direct AI response)
+app.post('/api/chat/fast', async (req, res) => {
+  try {
+    const { message, apiKey, model, providerId, systemPrompt } = req.body || {}
+
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' })
+    }
+
+    const effectiveKey = apiKey || req.header('x-openai-key') || process.env.OPENAI_API_KEY
+    const effectiveModel = model || 'gpt-4o-mini'
+    const effectiveProvider = (providerId || 'openai').toLowerCase()
+
+    console.log(`[sidecar] FAST PATH: ${effectiveProvider}/${effectiveModel}`)
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'X-Accel-Buffering': 'no'
+    })
+
+    res.write(`data: ${JSON.stringify({ type: 'start' })}\n\n`)
+
+    try {
+      // Use ChatOpenAI directly (no MCP overhead)
+      const llm = new ChatOpenAI({
+        model: effectiveModel,
+        temperature: 0.7,
+        streaming: true,
+        apiKey: effectiveKey,
+        ...(effectiveProvider === 'groq' ? {
+          configuration: { baseURL: 'https://api.groq.com/openai/v1' }
+        } : {})
+      })
+
+      const messages: any[] = []
+      if (systemPrompt) {
+        messages.push({ role: 'system', content: systemPrompt })
+      }
+      messages.push({ role: 'user', content: message })
+
+      const stream = await llm.stream(messages)
+
+      for await (const chunk of stream) {
+        const token = chunk?.content || ''
+        if (token) {
+          res.write(`data: ${JSON.stringify({ type: 'token', content: token })}\n\n`)
+        }
+      }
+
+      res.write(`data: ${JSON.stringify({ type: 'complete' })}\n\n`)
+    } catch (error) {
+      console.error('[sidecar] Fast path error:', error)
+      res.write(`data: ${JSON.stringify({
+        type: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })}\n\n`)
+    }
+
+    res.write(`data: ${JSON.stringify({ type: 'end' })}\n\n`)
+    res.end()
+
+  } catch (error) {
+    console.error('[sidecar] Fast path setup error:', error)
+    res.status(500).json({ error: 'Failed to setup streaming' })
+  }
+})
+
 // Streaming chat endpoint
 app.post('/api/chat/stream', async (req, res) => {
   try {
-    const { message, apiKey, model, providerId, systemPrompt, fileSummaries } = req.body || {}
+    const { message, apiKey, model, providerId, systemPrompt, fileSummaries, ragImages } = req.body || {}
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' })
@@ -595,13 +665,47 @@ app.post('/api/chat/stream', async (req, res) => {
         console.log('[sidecar] File summaries included in prompt:\n- ' + joined)
         enhancedSystemPrompt = `${enhancedSystemPrompt}\n\nUploaded Files (summaries only):\n- ${joined}`
       }
-      
+
+      // NEW: Load RAG images if provided (screenshot context)
+      let ragImageContext = ''
+      if (Array.isArray(ragImages) && ragImages.length > 0) {
+        console.log(`[sidecar] Loading ${ragImages.length} RAG images from disk...`)
+        const imageDescriptions: string[] = []
+
+        for (const imagePath of ragImages) {
+          try {
+            // Read image file and convert to base64
+            const absolutePath = path.resolve(imagePath)
+            if (fs.existsSync(absolutePath)) {
+              const imageBuffer = fs.readFileSync(absolutePath)
+              const base64Image = imageBuffer.toString('base64')
+              const mimeType = imagePath.endsWith('.png') ? 'image/png' : 'image/jpeg'
+
+              imageDescriptions.push(`Screenshot from ${path.basename(imagePath)} (included as image)`)
+
+              // Note: Actual image sending depends on provider support
+              // For now, we'll mention that images were found
+              console.log(`[sidecar] ✓ Loaded image: ${path.basename(imagePath)} (${Math.round(base64Image.length / 1024)}KB)`)
+            } else {
+              console.warn(`[sidecar] ⚠ Image not found: ${imagePath}`)
+            }
+          } catch (error) {
+            console.error(`[sidecar] Failed to load image ${imagePath}:`, error)
+          }
+        }
+
+        if (imageDescriptions.length > 0) {
+          ragImageContext = `\n\nRelevant Screenshots Retrieved:\n- ${imageDescriptions.join('\n- ')}\n\nNote: The screenshots above contain visual context relevant to this query.`
+          console.log('[sidecar] Added RAG image context to prompt')
+        }
+      }
+
       // Record the new user turn and kick off background summarization (non-blocking)
       addTurn(chatId, 'user', String(message))
       // Fire-and-forget summary update so it does not slow the main generation
       void maybeSummarizeAsync(chatId, effectiveKey, model)
-      
-      const finalMessage = `${enhancedSystemPrompt}\n\n${message}`
+
+      const finalMessage = `${enhancedSystemPrompt}${ragImageContext}\n\n${message}`
       const responseText = await streamingAgent.run(finalMessage)
 
       // Persist assistant response
@@ -912,6 +1016,7 @@ app.get('/api/composio/health', async (_req, res) => {
 app.listen(port, () => {
   console.log(`🚀 MCP Chat Server running on http://localhost:${port}`)
   console.log(`📡 API endpoints:`)
+  console.log(`   POST /api/chat/fast ⚡ - FAST PATH: Direct AI response (no tools, no MCP)`)
   console.log(`   POST /api/chat/stream - Send messages to MCP agent (streaming)`)
   console.log(`   POST /api/chat - Send messages to MCP agent (non-streaming)`)
   console.log(`   POST /api/chat/composio/stream - Composio intelligent tool chat (streaming)`)

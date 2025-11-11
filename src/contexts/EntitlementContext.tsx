@@ -40,7 +40,7 @@ interface EntitlementProviderProps {
 }
 
 export const EntitlementProvider: React.FC<EntitlementProviderProps> = ({ children }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated: _isAuthenticated } = useAuth(); // underscore prefix to indicate intentionally unused
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [usageCache, setUsageCache] = useState<Record<string, number>>({});

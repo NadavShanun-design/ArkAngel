@@ -19,7 +19,7 @@ export const FeatureBadge: React.FC<FeatureBadgeProps> = ({
 }) => {
   const requiredTier = useRequiredTier(feature);
   const isAvailable = useFeatureAvailable(feature);
-  const { tier } = useEntitlement();
+  const { tier: _tier } = useEntitlement(); // underscore prefix to indicate intentionally unused
 
   const getTierIcon = (tierName: SubscriptionTier) => {
     switch (tierName) {

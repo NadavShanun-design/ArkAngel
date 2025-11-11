@@ -60,11 +60,14 @@ export const Completion = () => {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (!isLoading && input.trim()) {
+        console.log('[Chat] Enter pressed, submitting:', input.substring(0, 50));
         submit();
+      } else {
+        console.log('[Chat] Enter pressed but blocked:', { isLoading, hasInput: !!input.trim() });
       }
     }
   };
@@ -186,7 +189,7 @@ export const Completion = () => {
                 placeholder="Ask me anything..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyDown}
                 disabled={isLoading}
                 className={`${
                   currentConversationId && conversationHistory.length > 0

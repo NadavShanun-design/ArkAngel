@@ -22,6 +22,10 @@ pub struct ScreenshotInfo {
     pub added_to_training: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub training_added_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub caption: Option<String>,              // VLM-generated caption
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub caption_generated_at: Option<String>, // When caption was created
 }
 
 /// Screenshot index wrapper
@@ -152,6 +156,8 @@ fn process_and_save_screenshot(image: DynamicImage) -> Result<ScreenshotInfo, St
         file_size,
         added_to_training: false,
         training_added_at: None,
+        caption: None,
+        caption_generated_at: None,
     })
 }
 
@@ -225,4 +231,59 @@ pub fn get_screenshot_by_id(screenshot_id: &str) -> Result<ScreenshotInfo, Strin
     index.screenshots.into_iter()
         .find(|s| s.id == screenshot_id)
         .ok_or_else(|| format!("Screenshot not found: {}", screenshot_id))
+}
+
+/// Add caption to existing screenshot (async, can fail gracefully)
+pub async fn add_caption_to_screenshot(screenshot_id: &str, ollama_url: Option<&str>) -> Result<ScreenshotInfo, String> {
+    println!("[Screenshot] Generating caption for screenshot: {}", screenshot_id);
+
+    // Get screenshot info
+    let screenshot_info = get_screenshot_by_id(screenshot_id)?;
+
+    // Generate caption with local Ollama VLM
+    let caption = generate_caption_for_screenshot(&screenshot_info, ollama_url).await?;
+
+    println!("[Screenshot] Caption generated: {}", &caption[..caption.len().min(50)]);
+
+    // Update index with caption
+    update_screenshot_caption(screenshot_id, &caption)?;
+
+    // Return updated info
+    let mut updated_info = screenshot_info;
+    updated_info.caption = Some(caption);
+    updated_info.caption_generated_at = Some(Utc::now().to_rfc3339());
+
+    Ok(updated_info)
+}
+
+/// Generate caption for screenshot using local Ollama VLM
+async fn generate_caption_for_screenshot(
+    screenshot: &ScreenshotInfo,
+    ollama_url: Option<&str>,
+) -> Result<String, String> {
+    use crate::vlm_captioner;
+
+    // Call local Ollama VLM (Moondream by default)
+    let result = vlm_captioner::caption_with_ollama(
+        &screenshot.file_path,
+        ollama_url,
+        None  // Use default model (moondream:latest)
+    ).await?;
+
+    Ok(result.caption)
+}
+
+/// Update screenshot caption in index
+pub fn update_screenshot_caption(screenshot_id: &str, caption: &str) -> Result<(), String> {
+    let mut index = ScreenshotIndex::load()?;
+
+    if let Some(screenshot) = index.screenshots.iter_mut().find(|s| s.id == screenshot_id) {
+        screenshot.caption = Some(caption.to_string());
+        screenshot.caption_generated_at = Some(Utc::now().to_rfc3339());
+    } else {
+        return Err(format!("Screenshot not found: {}", screenshot_id));
+    }
+
+    index.save()?;
+    Ok(())
 }

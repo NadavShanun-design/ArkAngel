@@ -1,6 +1,44 @@
 {
   "screenshots": [
     {
+      "id": "2195d9bc-bb33-4573-b8e3-217ed4552224",
+      "file_path": "./workflows/screenshot_2195d9bc-bb33-4573-b8e3-217ed4552224.png",
+      "timestamp": "2025-11-11T02:57:04.644907+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 1270652,
+      "added_to_training": false
+    },
+    {
+      "id": "153e97bc-bdff-4931-a0e1-c5c8f5b512a1",
+      "file_path": "./workflows/screenshot_153e97bc-bdff-4931-a0e1-c5c8f5b512a1.png",
+      "timestamp": "2025-11-11T02:50:48.118016+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 1364543,
+      "added_to_training": false,
+      "caption": "A computer screen displaying a desktop background with various applications running on it. The first app is an email application that has multiple windows open in each of its tabs. In addition to these, there are other apps displayed in different areas of the desktop background. There are three people visible on the right side of the screen. They appear to be reading or writing emails and browsing through various documents.",
+      "caption_generated_at": "2025-11-11T02:50:57.738585+00:00"
+    },
+    {
+      "id": "9ff683e2-8a2a-4a02-bda3-eb2067194440",
+      "file_path": "./workflows/screenshot_9ff683e2-8a2a-4a02-bda3-eb2067194440.png",
+      "timestamp": "2025-11-11T02:23:14.127095+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 1657518,
+      "added_to_training": false
+    },
+    {
+      "id": "1420915e-7153-409b-ad14-7cae7fbae44e",
+      "file_path": "./workflows/screenshot_1420915e-7153-409b-ad14-7cae7fbae44e.png",
+      "timestamp": "2025-11-11T02:19:30.596031+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 1842140,
+      "added_to_training": false
+    },
+    {
       "id": "8884469e-0e05-4b04-9787-33c792df3ae3",
       "file_path": "./workflows/screenshot_8884469e-0e05-4b04-9787-33c792df3ae3.png",
       "timestamp": "2025-11-10T05:50:08.501207+00:00",

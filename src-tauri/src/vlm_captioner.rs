@@ -276,3 +276,113 @@ pub async fn caption_with_claude(
         cost,
     })
 }
+
+/// Ollama response structure
+#[derive(Debug, Deserialize)]
+struct OllamaResponse {
+    response: String,
+    #[serde(default)]
+    done: bool,
+    #[serde(default)]
+    total_duration: u64,
+    #[serde(default)]
+    eval_count: u32,
+}
+
+/// Get simpler prompt for local VLM (Moondream is lighter weight)
+fn get_local_vlm_prompt() -> &'static str {
+    "Analyze this screenshot carefully. Describe exactly what you see: \
+     count people, describe their appearance and what they are doing, \
+     identify objects and their colors, describe the setting and lighting. \
+     Be specific and accurate."
+}
+
+/// Generate caption using local Ollama VLM (Moondream/LLaVA/Llama3.2-vision)
+pub async fn caption_with_ollama(
+    image_path: &str,
+    ollama_url: Option<&str>,
+    model: Option<&str>,
+) -> Result<CaptionResult, String> {
+    let url = ollama_url.unwrap_or("http://localhost:11434");
+    let model_name = model.unwrap_or("moondream:latest");
+
+    println!("[VLM] Starting Ollama caption generation for: {}", image_path);
+    println!("[VLM] Using model: {} at {}", model_name, url);
+
+    // Read and encode image
+    let image_bytes = fs::read(image_path)
+        .map_err(|e| format!("Failed to read image: {}", e))?;
+
+    let base64_image = general_purpose::STANDARD.encode(&image_bytes);
+    println!("[VLM] Image encoded, size: {} bytes", image_bytes.len());
+
+    // Build Ollama API request
+    let request_body = serde_json::json!({
+        "model": model_name,
+        "prompt": get_local_vlm_prompt(),
+        "images": [base64_image],  // Array of base64 images (Ollama strips data URI prefix automatically)
+        "stream": false,  // Wait for complete response
+        "options": {
+            "temperature": 0.7,  // Creativity level
+            "top_p": 0.9,        // Nucleus sampling
+            "top_k": 40,         // Top-K sampling
+            "num_predict": 150,  // Max output tokens
+        }
+    });
+
+    let start_time = std::time::Instant::now();
+
+    // Send request with 10-minute timeout
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(600))  // 10 minutes
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+    println!("[VLM] Sending request to Ollama...");
+
+    let response = client
+        .post(format!("{}/api/generate", url))
+        .header("Content-Type", "application/json")
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| {
+            if e.is_timeout() {
+                format!("Ollama request timeout after 10 minutes")
+            } else if e.is_connect() {
+                format!("Cannot connect to Ollama at {}. Is Ollama running?", url)
+            } else {
+                format!("Ollama request failed: {}", e)
+            }
+        })?;
+
+    let processing_time = start_time.elapsed();
+    println!("[VLM] Response received in {:.2}s", processing_time.as_secs_f64());
+
+    let status = response.status();
+    if !status.is_success() {
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(format!("Ollama API error {}: {}", status, error_text));
+    }
+
+    // Parse Ollama response
+    let ollama_response: OllamaResponse = response.json().await
+        .map_err(|e| format!("Failed to parse Ollama response: {}", e))?;
+
+    let caption = ollama_response.response.trim().to_string();
+    let tokens_used = ollama_response.eval_count;  // Number of tokens generated
+
+    println!("[VLM] Caption generated successfully:");
+    println!("[VLM]   Model: {}", model_name);
+    println!("[VLM]   Tokens: {}", tokens_used);
+    println!("[VLM]   Duration: {:.2}s", processing_time.as_secs_f64());
+    println!("[VLM]   Caption length: {} chars", caption.len());
+    println!("[VLM]   Caption preview: {}...", &caption[..caption.len().min(100)]);
+
+    Ok(CaptionResult {
+        caption,
+        model: model_name.to_string(),
+        tokens_used,
+        cost: 0.0,  // Local model = free!
+    })
+}

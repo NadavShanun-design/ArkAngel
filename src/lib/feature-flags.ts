@@ -29,9 +29,19 @@ export const isComposioEnabled = (): boolean => {
  */
 export const getChatEndpoint = (): string => {
   const baseUrl = 'http://127.0.0.1:8765';
-  return isComposioEnabled()
-    ? `${baseUrl}/api/chat/composio/stream`
-    : `${baseUrl}/api/chat/stream`;
+
+  // Check if we want to use the fast path (no MCP, no tools)
+  const useFastPath = localStorage.getItem('use_fast_path') !== 'false'; // Default: enabled
+
+  if (isComposioEnabled()) {
+    return `${baseUrl}/api/chat/composio/stream`;
+  }
+
+  if (useFastPath) {
+    return `${baseUrl}/api/chat/fast`;
+  }
+
+  return `${baseUrl}/api/chat/stream`;
 };
 
 /**
@@ -74,7 +84,9 @@ export const getFeatureFlagsStatus = () => {
  * Log feature flags on app startup
  */
 export const logFeatureFlags = (): void => {
+  const useFastPath = localStorage.getItem('use_fast_path') !== 'false';
   console.log('[Feature Flags] Frontend status:');
+  console.log(`  Fast Path: ${useFastPath ? '⚡ ENABLED (Direct AI, no tools)' : '🔧 Disabled (MCP + Tools)'}`);
   console.log(`  Composio: ${isComposioEnabled() ? '✅ Enabled' : '❌ Disabled'}`);
   console.log(`  Chat Endpoint: ${getChatEndpoint()}`);
 };

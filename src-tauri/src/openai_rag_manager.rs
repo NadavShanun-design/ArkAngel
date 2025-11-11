@@ -34,6 +34,8 @@ pub struct EmbeddedChunk {
     pub source_name: String,
     pub chunk_index: usize,
     pub embedding: Vec<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub image_path: Option<String>,  // NEW: File path for screenshots
 }
 
 /// Search result with relevance score
@@ -44,6 +46,8 @@ pub struct SearchResult {
     pub source_name: String,
     pub score: f32,
     pub chunk_index: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub image_path: Option<String>,  // NEW: File path for screenshots
 }
 
 /// Progress event for RAG creation
@@ -208,7 +212,7 @@ impl OpenAIRagManager {
     /// Generate embeddings for chunks using OpenAI API
     async fn generate_embeddings(
         &self,
-        chunks: Vec<(String, String, String, String, usize)>, // (id, text, source_id, source_name, chunk_index)
+        chunks: Vec<(String, String, String, String, usize, Option<String>)>, // (id, text, source_id, source_name, chunk_index, image_path)
         api_key: String,
         app_handle: &tauri::AppHandle,
     ) -> Result<Vec<EmbeddedChunk>> {
@@ -224,7 +228,7 @@ impl OpenAIRagManager {
             tracing::info!("Processing batch {}/{}", batch_idx + 1, total_batches);
             AppLogEvent::debug("OpenAIRAG", format!("Embedding batch {}/{}", batch_idx + 1, total_batches), None).emit_to_frontend(app_handle);
 
-            let texts: Vec<String> = chunk_batch.iter().map(|(_, text, _, _, _)| text.clone()).collect();
+            let texts: Vec<String> = chunk_batch.iter().map(|(_, text, _, _, _, _)| text.clone()).collect();
 
             let request = CreateEmbeddingRequestArgs::default()
                 .model("text-embedding-3-small")
@@ -234,12 +238,14 @@ impl OpenAIRagManager {
             let response = client.embeddings().create(request).await?;
 
             for (i, embedding_data) in response.data.iter().enumerate() {
-                let chunk_data: &(String, String, String, String, usize) = &chunk_batch[i];
-                let (id, text, source_id, source_name, chunk_index) = chunk_data;
+                let chunk_data: &(String, String, String, String, usize, Option<String>) = &chunk_batch[i];
+                let (id, text, source_id, source_name, chunk_index, image_path) = chunk_data;
 
                 // Get source type from source_id
                 let source_type = if source_id.starts_with("training_transcript") {
                     "transcript"
+                } else if source_id.starts_with("training_screenshot") {
+                    "screenshot"
                 } else {
                     "document"
                 };
@@ -252,6 +258,7 @@ impl OpenAIRagManager {
                     source_name: source_name.clone(),
                     chunk_index: *chunk_index,
                     embedding: embedding_data.embedding.iter().map(|&v| v as f32).collect(),
+                    image_path: image_path.clone(),  // Store screenshot file path!
                 });
             }
 
@@ -265,7 +272,8 @@ impl OpenAIRagManager {
     }
 
     /// Chunk training item into optimal sizes for embedding
-    fn chunk_training_item(&self, item: &TrainingDataItem) -> Result<Vec<(String, String, String, String, usize)>> {
+    /// Returns: (id, text, source_id, source_name, chunk_index, image_path)
+    fn chunk_training_item(&self, item: &TrainingDataItem) -> Result<Vec<(String, String, String, String, usize, Option<String>)>> {
         let mut chunks = Vec::new();
 
         // Parse JSON content
@@ -294,6 +302,7 @@ impl OpenAIRagManager {
                                 item.id.clone(),
                                 item.title.clone(),
                                 chunks.len(),
+                                None,  // No image for transcripts
                             ));
                             chunk_text.clear();
                             chunk_size = 0;
@@ -312,6 +321,7 @@ impl OpenAIRagManager {
                         item.id.clone(),
                         item.title.clone(),
                         chunks.len(),
+                        None,  // No image for transcripts
                     ));
                 }
             }
@@ -326,9 +336,28 @@ impl OpenAIRagManager {
                             item.id.clone(),
                             item.title.clone(),
                             idx,
+                            None,  // No image for documents
                         ));
                     }
                 }
+            }
+        } else if item.source_type == "screenshot" {
+            // Handle screenshot format - caption is the searchable text
+            if let Some(caption) = content_json.get("caption").and_then(|c| c.as_str()) {
+                // Extract file path from JSON
+                let file_path = content_json.get("file_path")
+                    .and_then(|f| f.as_str())
+                    .map(|s| s.to_string());
+
+                // Entire caption as single chunk (usually 300-500 words, well within limits)
+                chunks.push((
+                    format!("{}_0", item.id),
+                    caption.to_string(),
+                    item.id.clone(),
+                    item.title.clone(),
+                    0,
+                    file_path,  // Include screenshot file path!
+                ));
             }
         }
 
@@ -392,6 +421,7 @@ impl OpenAIRagManager {
                     source_name: chunk.source_name.clone(),
                     score: *score,
                     chunk_index: chunk.chunk_index,
+                    image_path: chunk.image_path.clone(),  // Include screenshot file path!
                 }
             })
             .collect();

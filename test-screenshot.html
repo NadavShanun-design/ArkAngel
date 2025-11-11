@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Screenshot Capture</title>
+    <style>
+        body {
+            font-family: system-ui;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            margin: 10px;
+            cursor: pointer;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+        }
+        button:hover {
+            background: #0051D5;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>🖼️ Screenshot Capture Test</h1>
+
+    <div>
+        <h2>Quick Tests:</h2>
+        <button onclick="testCapture()">Test Screenshot Capture</button>
+        <button onclick="testCaptureWithCaption()">Test with VLM Caption</button>
+        <button onclick="getAllScreenshots()">List All Screenshots</button>
+        <button onclick="openWorkflowsFolder()">Open Workflows Folder</button>
+    </div>
+
+    <div>
+        <h2>Auto-Capture Settings:</h2>
+        <button onclick="enableAutoCapture()">Enable Auto-Capture</button>
+        <button onclick="disableAutoCapture()">Disable Auto-Capture (Recommended)</button>
+        <button onclick="checkAutoCapture()">Check Current Setting</button>
+    </div>
+
+    <div id="result" class="info">
+        Click a button to test screenshot functionality...
+
+        📋 Instructions:
+        1. Make sure you've granted Screen Recording permission in System Settings
+        2. Restart the app after granting permission
+        3. Click "Test Screenshot Capture" to verify it works
+    </div>
+
+    <script>
+        const { invoke } = window.__TAURI__.core;
+        const resultDiv = document.getElementById('result');
+
+        function log(message, type = 'info') {
+            resultDiv.className = type;
+            resultDiv.textContent = message;
+            console.log(message);
+        }
+
+        async function testCapture() {
+            try {
+                log('📸 Capturing screenshot...', 'info');
+                const result = await invoke('capture_screenshot');
+                log('✅ SUCCESS!\n\n' + JSON.stringify(result, null, 2), 'success');
+            } catch (error) {
+                log('❌ ERROR: ' + error + '\n\nMake sure you:\n1. Granted Screen Recording permission in System Settings\n2. Restarted the app after granting permission', 'error');
+            }
+        }
+
+        async function testCaptureWithCaption() {
+            try {
+                log('📸 Capturing screenshot with VLM caption...\n(This requires Ollama running on localhost:11434)', 'info');
+                const result = await invoke('capture_screenshot_with_caption', {
+                    ollamaUrl: 'http://localhost:11434'
+                });
+                log('✅ SUCCESS!\n\n' + JSON.stringify(result, null, 2), 'success');
+            } catch (error) {
+                log('❌ ERROR: ' + error + '\n\nNote: This requires:\n1. Screen Recording permission\n2. Ollama running with a vision model\n3. App restart after permissions', 'error');
+            }
+        }
+
+        async function getAllScreenshots() {
+            try {
+                log('📂 Loading screenshots...', 'info');
+                const result = await invoke('get_all_screenshots');
+                const screenshots = result.screenshots || [];
+                log(`Found ${screenshots.length} screenshot(s):\n\n` + JSON.stringify(screenshots, null, 2), 'success');
+            } catch (error) {
+                log('❌ ERROR: ' + error, 'error');
+            }
+        }
+
+        function openWorkflowsFolder() {
+            log('📁 Opening workflows folder...\n(Should open in Finder)', 'info');
+            // Open the workflows folder in Finder
+            setTimeout(() => {
+                log('If the folder didn\'t open, navigate to:\n./workflows/\n\nin your ArkAngel2 directory', 'info');
+            }, 2000);
+        }
+
+        function enableAutoCapture() {
+            localStorage.setItem('auto-capture-screenshots', 'true');
+            log('✅ Auto-capture ENABLED\n\nScreenshots will be captured automatically on every message.\n\n⚠️ Warning: This may slow down responses!', 'success');
+        }
+
+        function disableAutoCapture() {
+            localStorage.setItem('auto-capture-screenshots', 'false');
+            log('✅ Auto-capture DISABLED (Recommended)\n\nScreenshots will NOT be captured automatically.\nUse the manual test buttons when you need screenshots.', 'success');
+        }
+
+        function checkAutoCapture() {
+            const enabled = localStorage.getItem('auto-capture-screenshots') === 'true';
+            log(`Auto-capture status: ${enabled ? '🟢 ENABLED' : '🔴 DISABLED (Recommended)'}\n\nCurrent setting: ${localStorage.getItem('auto-capture-screenshots') || 'not set (defaults to disabled)'}`, 'info');
+        }
+
+        // Show initial status
+        checkAutoCapture();
+    </script>
+</body>
+</html>

@@ -364,9 +364,33 @@ async fn close_settings_window(app_handle: tauri::AppHandle) -> Result<(), Strin
 }
 
 // Screenshot capture commands
+// Note: xcap is synchronous, so we use spawn_blocking to avoid blocking the main thread
 #[tauri::command]
 async fn capture_screenshot() -> Result<screenshot_manager::ScreenshotInfo, String> {
-    screenshot_manager::capture_primary_monitor()
+    tokio::task::spawn_blocking(|| {
+        screenshot_manager::capture_primary_monitor()
+    })
+    .await
+    .map_err(|e| format!("Screenshot task failed: {}", e))?
+}
+
+#[tauri::command]
+async fn capture_screenshot_with_caption(ollama_url: Option<String>) -> Result<screenshot_manager::ScreenshotInfo, String> {
+    // First capture screenshot in blocking task
+    let screenshot_info = tokio::task::spawn_blocking(|| {
+        screenshot_manager::capture_primary_monitor()
+    })
+    .await
+    .map_err(|e| format!("Screenshot task failed: {}", e))??;
+
+    // Then try to add caption (non-blocking if it fails)
+    match screenshot_manager::add_caption_to_screenshot(&screenshot_info.id, ollama_url.as_deref()).await {
+        Ok(updated_info) => Ok(updated_info),
+        Err(e) => {
+            eprintln!("[Screenshot] Caption generation failed (returning screenshot without caption): {}", e);
+            Ok(screenshot_info) // Return screenshot without caption instead of failing
+        }
+    }
 }
 
 #[tauri::command]
@@ -436,6 +460,69 @@ async fn add_screenshot_to_training(
         tokens_used: caption_result.tokens_used,
         cost: caption_result.cost,
     })
+}
+
+#[tauri::command]
+async fn generate_caption_with_ollama(
+    screenshot_id: String,
+    ollama_url: Option<String>,
+    model: Option<String>,
+) -> Result<AddToTrainingResult, String> {
+    println!("[GenerateCaption] Starting Ollama caption for screenshot: {}", screenshot_id);
+
+    // Get screenshot info
+    let screenshot = screenshot_manager::get_screenshot_by_id(&screenshot_id)?;
+
+    // Generate caption using Ollama VLM (locally hosted Stream)
+    let caption_result = vlm_captioner::caption_with_ollama(
+        &screenshot.file_path,
+        ollama_url.as_deref(),
+        model.as_deref(),
+    ).await?;
+
+    println!("[GenerateCaption] Caption generated: {} chars", caption_result.caption.len());
+
+    // Update screenshot with caption
+    screenshot_manager::update_screenshot_caption(&screenshot_id, &caption_result.caption)
+        .map_err(|e| format!("Failed to update screenshot caption: {}", e))?;
+
+    Ok(AddToTrainingResult {
+        screenshot_id: screenshot_id.clone(),
+        caption: caption_result.caption.clone(),
+        tokens_used: caption_result.tokens_used,
+        cost: caption_result.cost,
+    })
+}
+
+#[tauri::command]
+async fn add_screenshot_to_training_with_caption(
+    screenshot_id: String,
+    caption: String,
+) -> Result<(), String> {
+    println!("[AddToTraining] Adding screenshot {} to training with existing caption", screenshot_id);
+
+    // Get screenshot info
+    let screenshot = screenshot_manager::get_screenshot_by_id(&screenshot_id)?;
+
+    // Add to training data system
+    let training_manager = training_data_manager::TrainingDataManager::new()
+        .map_err(|e| format!("Failed to initialize training manager: {}", e))?;
+
+    training_manager.add_screenshot_to_training(
+        screenshot_id.clone(),
+        screenshot.file_path.clone(),
+        caption.clone(),
+        screenshot.width,
+        screenshot.height,
+        screenshot.timestamp.clone(),
+    ).map_err(|e| format!("Failed to save to training data: {}", e))?;
+
+    // Mark screenshot as added to training
+    screenshot_manager::mark_as_added_to_training(&screenshot_id)?;
+
+    println!("[AddToTraining] Complete! Screenshot added with caption ({} chars)", caption.len());
+
+    Ok(())
 }
 
 // Transcript management commands
@@ -800,10 +887,13 @@ pub fn run() {
             open_settings_window,
             close_settings_window,
             capture_screenshot,
+            capture_screenshot_with_caption,
             get_all_screenshots,
             delete_screenshot,
             get_screenshot_by_id,
             add_screenshot_to_training,
+            generate_caption_with_ollama,
+            add_screenshot_to_training_with_caption,
             agent_manager::check_agent_permissions,
             agent_manager::start_agent,
             agent_manager::stop_agent,
