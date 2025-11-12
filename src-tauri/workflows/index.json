@@ -1,6 +1,39 @@
 {
   "screenshots": [
     {
+      "id": "60d8e764-0fc4-401f-805a-0739af9a9ac5",
+      "file_path": "./workflows/screenshot_60d8e764-0fc4-401f-805a-0739af9a9ac5.png",
+      "timestamp": "2025-11-12T06:56:51.849255+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 3562842,
+      "added_to_training": false,
+      "caption": "A computer screen displays a desktop background featuring several trees in various shades of brown against a light gray sky with white clouds. On the left side of the frame is a window with an open document titled \"New Folder\" on it, while on the right side there are multiple windows displaying different app icons and screens that appear to be running. The screen also shows a small photo of trees in front of a house.",
+      "caption_generated_at": "2025-11-12T06:56:54.736446+00:00"
+    },
+    {
+      "id": "ccb879c4-9ceb-42ca-8b4d-3b9dd67ba8ed",
+      "file_path": "./workflows/screenshot_ccb879c4-9ceb-42ca-8b4d-3b9dd67ba8ed.png",
+      "timestamp": "2025-11-12T06:55:55.813618+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 3501876,
+      "added_to_training": false,
+      "caption": "The image displays a computer screen with a green forest scene at the center. The main focus is on a person walking through the trees in the background while holding an apple. There are several other elements within this scene that contribute to the overall atmosphere, such as tall trees, a sunny day, and a bright sky providing ample light for the viewer. Additionally, there is text visible which reads \"This image was taken with a software called Paint.\" The image showcases various aspects of nature and outdoor exploration, giving viewers a sense of being present in that environment while also allowing them to learn more about the technology used to capture it.",
+      "caption_generated_at": "2025-11-12T06:55:59.106183+00:00"
+    },
+    {
+      "id": "81b0a897-047e-4f45-b136-9898ac392002",
+      "file_path": "./workflows/screenshot_81b0a897-047e-4f45-b136-9898ac392002.png",
+      "timestamp": "2025-11-12T06:54:11.643780+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 1470334,
+      "added_to_training": false,
+      "caption": "The image shows a computer screen displaying three windows open on it. In the top left corner of the screen is a black text box with the words \"Prompt\" written in white letters. Next to it is another window that reads \"Google Chrome\". The middle section of the monitor contains an empty page, and at the bottom right edge, there's a window displaying an open document titled \"notes\".",
+      "caption_generated_at": "2025-11-12T06:54:16.114507+00:00"
+    },
+    {
       "id": "737d3e59-7d21-4786-9c5e-29a3a1dd4ada",
       "file_path": "./workflows/screenshot_737d3e59-7d21-4786-9c5e-29a3a1dd4ada.png",
       "timestamp": "2025-11-12T01:12:01.273678+00:00",

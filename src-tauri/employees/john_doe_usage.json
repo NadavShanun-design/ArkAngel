@@ -1,21 +1,11 @@
 {
   "employee_id": "john_doe",
-  "last_updated": "2025-11-12T01:16:02.969Z",
-  "total_screenshots": 9,
+  "last_updated": "2025-11-12T06:56:55.437355+00:00",
+  "total_screenshots": 12,
   "software_usage": {
-    "browsers": {
-      "count": 0,
-      "percentage": 0,
-      "instances": []
-    },
-    "code_editors": {
-      "count": 0,
-      "percentage": 0,
-      "instances": []
-    },
     "social_media": {
       "count": 3,
-      "percentage": 33.33333333333333,
+      "percentage": 25.0,
       "instances": [
         {
           "screenshot_id": "737d3e59-7d21-4786-9c5e-29a3a1dd4ada",
@@ -37,21 +27,38 @@
         }
       ]
     },
-    "communication": {
+    "browsers": {
       "count": 1,
-      "percentage": 11.11111111111111,
+      "percentage": 8.333333333333332,
       "instances": [
         {
-          "screenshot_id": "e5c25e11-b7ae-4a72-8f7c-46cbf43e3e21",
-          "timestamp": "2025-11-11T21:38:41.598172+00:00",
-          "detected_category": "communication",
-          "caption_preview": "The image shows a computer screen displaying an open document with a white background. The document "
+          "screenshot_id": "81b0a897-047e-4f45-b136-9898ac392002",
+          "timestamp": "2025-11-12T06:54:11.643780+00:00",
+          "detected_category": "browsers",
+          "caption_preview": "The image shows a computer screen displaying three windows open on it. In the top left corner of the"
+        }
+      ]
+    },
+    "terminal": {
+      "count": 0,
+      "percentage": 0.0,
+      "instances": []
+    },
+    "media": {
+      "count": 1,
+      "percentage": 8.333333333333332,
+      "instances": [
+        {
+          "screenshot_id": "c9036319-1209-48bf-80e7-bfb2aa797d75",
+          "timestamp": "2025-11-11T21:52:56.471899+00:00",
+          "detected_category": "media",
+          "caption_preview": "The image shows a computer screen displaying an open video editing software. The background of the s"
         }
       ]
     },
     "productivity": {
       "count": 2,
-      "percentage": 22.22222222222222,
+      "percentage": 16.666666666666664,
       "instances": [
         {
           "screenshot_id": "2b64ad26-04a3-4b1f-905f-0fd6ff500c65",
@@ -67,9 +74,21 @@
         }
       ]
     },
+    "other": {
+      "count": 1,
+      "percentage": 8.333333333333332,
+      "instances": [
+        {
+          "screenshot_id": "1c054ae3-2927-4e16-8bd8-3ee9bf3bca0b",
+          "timestamp": "2025-11-11T21:39:19.017054+00:00",
+          "detected_category": "other",
+          "caption_preview": "The image shows a computer monitor displaying an open webpage on a dark background. The screen has w"
+        }
+      ]
+    },
     "email": {
       "count": 1,
-      "percentage": 11.11111111111111,
+      "percentage": 8.333333333333332,
       "instances": [
         {
           "screenshot_id": "153e97bc-bdff-4931-a0e1-c5c8f5b512a1",
@@ -80,37 +99,37 @@
       ]
     },
     "design": {
-      "count": 0,
-      "percentage": 0,
-      "instances": []
-    },
-    "terminal": {
-      "count": 0,
-      "percentage": 0,
-      "instances": []
-    },
-    "media": {
-      "count": 1,
-      "percentage": 11.11111111111111,
+      "count": 2,
+      "percentage": 16.666666666666664,
       "instances": [
         {
-          "screenshot_id": "c9036319-1209-48bf-80e7-bfb2aa797d75",
-          "timestamp": "2025-11-11T21:52:56.471899+00:00",
-          "detected_category": "media",
-          "caption_preview": "The image shows a computer screen displaying an open video editing software. The background of the s"
+          "screenshot_id": "ccb879c4-9ceb-42ca-8b4d-3b9dd67ba8ed",
+          "timestamp": "2025-11-12T06:55:55.813618+00:00",
+          "detected_category": "design",
+          "caption_preview": "The image displays a computer screen with a green forest scene at the center. The main focus is on a"
+        },
+        {
+          "screenshot_id": "60d8e764-0fc4-401f-805a-0739af9a9ac5",
+          "timestamp": "2025-11-12T06:56:51.849255+00:00",
+          "detected_category": "design",
+          "caption_preview": "A computer screen displays a desktop background featuring several trees in various shades of brown a"
         }
       ]
     },
-    "other": {
+    "code_editors": {
+      "count": 0,
+      "percentage": 0.0,
+      "instances": []
+    },
+    "communication": {
       "count": 1,
-      "percentage": 11.11111111111111,
+      "percentage": 8.333333333333332,
       "instances": [
         {
-          "screenshot_id": "1c054ae3-2927-4e16-8bd8-3ee9bf3bca0b",
-          "timestamp": "2025-11-11T21:39:19.017054+00:00",
-          "detected_category": "other",
-          "caption_preview": "The image shows a computer monitor displaying an open webpage on a dark background. The screen has w",
-          "error": "Assignment to constant variable."
+          "screenshot_id": "e5c25e11-b7ae-4a72-8f7c-46cbf43e3e21",
+          "timestamp": "2025-11-11T21:38:41.598172+00:00",
+          "detected_category": "communication",
+          "caption_preview": "The image shows a computer screen displaying an open document with a white background. The document "
         }
       ]
     }
@@ -118,7 +137,7 @@
   "timeline": [
     {
       "date": "2025-11-12",
-      "screenshots": 9,
+      "screenshots": 12,
       "most_used": "social_media"
     }
   ]
