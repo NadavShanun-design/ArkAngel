@@ -1,0 +1,59 @@
+{
+  "employee_id": "john_smith",
+  "last_updated": "2025-11-12T00:06:41.182Z",
+  "total_screenshots": 35,
+  "software_usage": {
+    "browsers": {
+      "count": 3,
+      "percentage": 8.571428571428571,
+      "instances": []
+    },
+    "terminal": {
+      "count": 0,
+      "percentage": 0,
+      "instances": []
+    },
+    "code_editors": {
+      "count": 8,
+      "percentage": 22.857142857142858,
+      "instances": []
+    },
+    "social_media": {
+      "count": 6,
+      "percentage": 17.142857142857142,
+      "instances": []
+    },
+    "communication": {
+      "count": 3,
+      "percentage": 8.571428571428571,
+      "instances": []
+    },
+    "media": {
+      "count": 8,
+      "percentage": 22.857142857142858,
+      "instances": []
+    },
+    "productivity": {
+      "count": 3,
+      "percentage": 8.571428571428571,
+      "instances": []
+    },
+    "email": {
+      "count": 1,
+      "percentage": 2.857142857142857,
+      "instances": []
+    },
+    "design": {
+      "count": 3,
+      "percentage": 8.571428571428571,
+      "instances": []
+    }
+  },
+  "timeline": [
+    {
+      "date": "2025-11-12",
+      "screenshots": 35,
+      "most_used": "code_editors"
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "employee_id": "jane_williams",
+  "last_updated": "2025-11-12T00:06:41.187Z",
+  "total_screenshots": 42,
+  "software_usage": {
+    "code_editors": {
+      "count": 1,
+      "percentage": 2.380952380952381,
+      "instances": []
+    },
+    "media": {
+      "count": 5,
+      "percentage": 11.904761904761903,
+      "instances": []
+    },
+    "browsers": {
+      "count": 11,
+      "percentage": 26.190476190476193,
+      "instances": []
+    },
+    "productivity": {
+      "count": 1,
+      "percentage": 2.380952380952381,
+      "instances": []
+    },
+    "email": {
+      "count": 4,
+      "percentage": 9.523809523809524,
+      "instances": []
+    },
+    "social_media": {
+      "count": 9,
+      "percentage": 21.428571428571427,
+      "instances": []
+    },
+    "terminal": {
+      "count": 1,
+      "percentage": 2.380952380952381,
+      "instances": []
+    },
+    "communication": {
+      "count": 7,
+      "percentage": 16.666666666666664,
+      "instances": []
+    },
+    "design": {
+      "count": 3,
+      "percentage": 7.142857142857142,
+      "instances": []
+    }
+  },
+  "timeline": [
+    {
+      "date": "2025-11-12",
+      "screenshots": 42,
+      "most_used": "browsers"
+    }
+  ]
+}

@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { createCheckoutSession, createPortalSession, STRIPE_PRICES, type SubscriptionTier } from "@/lib/stripe";
 import { TranscriptViewer } from "@/components/transcripts";
 import { CreatePersonaWizard } from "@/components/training";
+import EmployeesPage from "@/components/employees/EmployeesPage";
 import ReactMarkdown from "react-markdown";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
@@ -28,6 +29,7 @@ type SectionKey =
   | "documents"
   | "transcripts"
   | "photos"
+  | "employees"
   | "training"
   | "manage-data";
 
@@ -43,6 +45,7 @@ const sections: { key: SectionKey; label: string }[] = [
   { key: "documents", label: "Documents" },
   { key: "transcripts", label: "Transcripts" },
   { key: "photos", label: "Photos" },
+  { key: "employees", label: "Employees" },
   { key: "training", label: "Training" },
   { key: "manage-data", label: "Manage Data" },
 ];
@@ -105,6 +108,7 @@ export const AdvancedSettingsPage: React.FC = () => {
             {active === "documents" && <DocumentsSection />}
             {active === "transcripts" && <TranscriptsSection />}
             {active === "photos" && <PhotosSection />}
+            {active === "employees" && <EmployeesSection />}
             {active === "training" && <TrainingSection />}
             {active === "manage-data" && <ManageDataSection />}
           </div>
@@ -2745,6 +2749,11 @@ const PhotosSection: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Auto-capture toggle state
+  const [autoCaptureEnabled, setAutoCaptureEnabled] = useState(() => {
+    return localStorage.getItem('auto-capture-screenshots') === 'true';
+  });
+
   // Selection mode for adding to training (like DocumentsSection)
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
@@ -2999,6 +3008,17 @@ const PhotosSection: React.FC = () => {
     }
   };
 
+  // Toggle auto-capture on/off
+  const handleToggleAutoCapture = (enabled: boolean) => {
+    setAutoCaptureEnabled(enabled);
+    localStorage.setItem('auto-capture-screenshots', enabled ? 'true' : 'false');
+    console.log('[Auto-Capture] Setting changed:', enabled ? 'ENABLED' : 'DISABLED');
+
+    if (enabled) {
+      alert('⚠️ Auto-Capture Enabled\n\nScreenshots will be captured automatically on every message.\n\nNote: This adds ~10 seconds delay for VLM caption generation.\n\nYou can disable this anytime in Settings → Photos.');
+    }
+  };
+
   const openScreenRecordingSettings = async () => {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
@@ -3030,6 +3050,28 @@ const PhotosSection: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Auto-Capture Status (Always Enabled) */}
+      <SpotlightArea className="p-4 border border-input/50 rounded-md bg-background/50">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-sm font-semibold">Auto-Capture Screenshots</h3>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-600 dark:text-green-400">
+                ALWAYS ENABLED
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Screenshots are automatically captured with VLM captions on every message. This feature is always active to collect training data.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative inline-flex h-6 w-11 items-center rounded-full bg-primary">
+              <span className="inline-block h-4 w-4 transform rounded-full bg-background translate-x-6" />
+            </div>
+          </div>
+        </div>
+      </SpotlightArea>
 
       {/* Add to Training Button */}
       {screenshots.length > 0 && (
@@ -3719,6 +3761,18 @@ const TrainingSection: React.FC = () => {
           }}
         />
       )}
+    </div>
+  );
+};
+
+const EmployeesSection: React.FC = () => {
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold">Employee Monitoring</h2>
+      <p className="text-sm text-muted-foreground">View employee software usage analytics and productivity insights.</p>
+      <div className="-mx-6 -mb-24">
+        <EmployeesPage />
+      </div>
     </div>
   );
 };

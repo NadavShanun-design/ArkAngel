@@ -1,0 +1,29 @@
+# Tauri Dev Watcher Ignore File
+# This file tells Tauri's file watcher to ignore specific paths
+# Similar to .gitignore syntax
+
+# Ignore the workflows directory to prevent hot reload when screenshots are captured
+workflows/
+workflows/*.png
+workflows/*.json
+
+# Ignore memory exports to prevent hot reload when conversations are exported
+memory/
+memory/*.json
+memory/*.json.synced
+
+# Ignore uploads to prevent hot reload when files are uploaded
+uploads/
+uploads/*
+uploads/index.json
+
+# Ignore transcripts
+transcripts/
+transcripts/*
+
+# Ignore target directory (Rust build artifacts)
+target/
+
+# Ignore any temporary files
+*.tmp
+*.temp

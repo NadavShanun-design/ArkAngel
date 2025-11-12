@@ -1,0 +1,59 @@
+{
+  "employee_id": "michael_johnson",
+  "last_updated": "2025-11-12T00:06:41.188Z",
+  "total_screenshots": 28,
+  "software_usage": {
+    "email": {
+      "count": 2,
+      "percentage": 7.142857142857142,
+      "instances": []
+    },
+    "social_media": {
+      "count": 2,
+      "percentage": 7.142857142857142,
+      "instances": []
+    },
+    "code_editors": {
+      "count": 3,
+      "percentage": 10.714285714285714,
+      "instances": []
+    },
+    "terminal": {
+      "count": 0,
+      "percentage": 0,
+      "instances": []
+    },
+    "media": {
+      "count": 7,
+      "percentage": 25,
+      "instances": []
+    },
+    "productivity": {
+      "count": 5,
+      "percentage": 17.857142857142858,
+      "instances": []
+    },
+    "communication": {
+      "count": 5,
+      "percentage": 17.857142857142858,
+      "instances": []
+    },
+    "design": {
+      "count": 4,
+      "percentage": 14.285714285714285,
+      "instances": []
+    },
+    "browsers": {
+      "count": 0,
+      "percentage": 0,
+      "instances": []
+    }
+  },
+  "timeline": [
+    {
+      "date": "2025-11-12",
+      "screenshots": 28,
+      "most_used": "media"
+    }
+  ]
+}

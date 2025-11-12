@@ -1,0 +1,52 @@
+{
+  "browsers": {
+    "keywords": ["chrome", "firefox", "safari", "edge", "browser", "google chrome", "web browser", "chromium", "opera", "brave"],
+    "icon": "🌐",
+    "color": "#4285F4"
+  },
+  "code_editors": {
+    "keywords": ["vscode", "visual studio code", "cursor", "sublime", "atom", "jetbrains", "pycharm", "webstorm", "intellij", "code editor", "vim", "emacs", "neovim", "ide", "coding", "programming"],
+    "icon": "💻",
+    "color": "#007ACC"
+  },
+  "social_media": {
+    "keywords": ["linkedin", "facebook", "twitter", "x.com", "instagram", "reddit", "social media", "tiktok", "snapchat", "pinterest"],
+    "icon": "📱",
+    "color": "#0A66C2"
+  },
+  "communication": {
+    "keywords": ["slack", "teams", "discord", "zoom", "meet", "skype", "messenger", "whatsapp", "telegram", "signal", "chat"],
+    "icon": "💬",
+    "color": "#E01E5A"
+  },
+  "productivity": {
+    "keywords": ["notion", "trello", "asana", "jira", "monday", "excel", "sheets", "docs", "word", "spreadsheet", "document", "presentation", "powerpoint", "slides"],
+    "icon": "📊",
+    "color": "#FF6B6B"
+  },
+  "email": {
+    "keywords": ["gmail", "outlook", "mail", "email", "inbox", "mailbox", "yahoo mail", "protonmail"],
+    "icon": "📧",
+    "color": "#EA4335"
+  },
+  "design": {
+    "keywords": ["figma", "photoshop", "illustrator", "sketch", "canva", "design tool", "adobe", "affinity", "inkscape", "gimp"],
+    "icon": "🎨",
+    "color": "#F24E1E"
+  },
+  "terminal": {
+    "keywords": ["terminal", "command", "cmd", "powershell", "bash", "shell", "console", "iterm", "warp"],
+    "icon": "⚙️",
+    "color": "#000000"
+  },
+  "media": {
+    "keywords": ["youtube", "spotify", "netflix", "video player", "music", "video", "audio", "streaming", "vlc", "itunes"],
+    "icon": "🎵",
+    "color": "#FF0000"
+  },
+  "other": {
+    "keywords": [],
+    "icon": "📄",
+    "color": "#999999"
+  }
+}

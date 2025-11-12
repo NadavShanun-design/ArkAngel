@@ -1,0 +1,52 @@
+{
+  "employees": [
+    {
+      "id": "john_doe",
+      "name": "John Doe",
+      "email": "john.doe@company.com",
+      "avatar": "https://i.pravatar.cc/150?u=johndoe",
+      "status": "active",
+      "is_current_user": true
+    },
+    {
+      "id": "john_smith",
+      "name": "John Smith",
+      "email": "john.smith@company.com",
+      "avatar": "https://i.pravatar.cc/150?u=johnsmith",
+      "status": "active",
+      "is_current_user": false
+    },
+    {
+      "id": "jane_williams",
+      "name": "Jane Williams",
+      "email": "jane.williams@company.com",
+      "avatar": "https://i.pravatar.cc/150?u=janewilliams",
+      "status": "active",
+      "is_current_user": false
+    },
+    {
+      "id": "michael_johnson",
+      "name": "Michael Johnson",
+      "email": "michael.johnson@company.com",
+      "avatar": "https://i.pravatar.cc/150?u=michaeljohnson",
+      "status": "active",
+      "is_current_user": false
+    },
+    {
+      "id": "sarah_brown",
+      "name": "Sarah Brown",
+      "email": "sarah.brown@company.com",
+      "avatar": "https://i.pravatar.cc/150?u=sarahbrown",
+      "status": "active",
+      "is_current_user": false
+    },
+    {
+      "id": "david_miller",
+      "name": "David Miller",
+      "email": "david.miller@company.com",
+      "avatar": "https://i.pravatar.cc/150?u=davidmiller",
+      "status": "active",
+      "is_current_user": false
+    }
+  ]
+}

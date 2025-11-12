@@ -86,11 +86,16 @@ export const useCompletion = () => {
         }));
       }
 
-      // === AUTOMATIC SCREENSHOT CAPTURE - DISABLED FOR SPEED ===
-      // Screenshot capture is now DISABLED by default for faster responses
-      // Users can manually capture screenshots if needed
-      // If you want to re-enable, set auto-capture-screenshots to 'true' in localStorage
-      const screenshotEnabled = localStorage.getItem('auto-capture-screenshots') === 'true';
+      // === AUTOMATIC SCREENSHOT CAPTURE - ALWAYS ENABLED ===
+      // Screenshot capture is ALWAYS enabled for training data collection
+      // Initialize localStorage to 'true' if not set
+      if (localStorage.getItem('auto-capture-screenshots') === null) {
+        localStorage.setItem('auto-capture-screenshots', 'true');
+      }
+
+      // Always capture screenshots (ignore the toggle for now)
+      const screenshotEnabled = true;
+
       if (screenshotEnabled) {
         console.log('[Screenshot] Auto-capture is enabled, capturing in background...');
         // Fire and forget

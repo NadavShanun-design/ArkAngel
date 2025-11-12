@@ -14,6 +14,7 @@ mod logger;  // NEW: Centralized logging infrastructure
 mod whisper_local;  // NEW: On-device Whisper transcription (pre-built binary)
 mod screenshot_manager;  // NEW: Screenshot capture and storage
 mod vlm_captioner;  // NEW: Vision Language Model integration
+mod employee_tracker;  // NEW: Employee monitoring and software usage tracking
 
 use std::process::{Command as StdCommand, Stdio, Child};
 use std::sync::{Arc, Mutex};
@@ -385,7 +386,17 @@ async fn capture_screenshot_with_caption(ollama_url: Option<String>) -> Result<s
 
     // Then try to add caption (non-blocking if it fails)
     match screenshot_manager::add_caption_to_screenshot(&screenshot_info.id, ollama_url.as_deref()).await {
-        Ok(updated_info) => Ok(updated_info),
+        Ok(updated_info) => {
+            // Update John Doe employee tracking with the new screenshot and caption
+            if let Some(caption) = &updated_info.caption {
+                let _ = employee_tracker::update_john_doe_with_screenshot(
+                    &updated_info.id,
+                    &updated_info.timestamp,
+                    caption
+                ).await;
+            }
+            Ok(updated_info)
+        },
         Err(e) => {
             eprintln!("[Screenshot] Caption generation failed (returning screenshot without caption): {}", e);
             Ok(screenshot_info) // Return screenshot without caption instead of failing
@@ -485,6 +496,13 @@ async fn generate_caption_with_ollama(
     // Update screenshot with caption
     screenshot_manager::update_screenshot_caption(&screenshot_id, &caption_result.caption)
         .map_err(|e| format!("Failed to update screenshot caption: {}", e))?;
+
+    // Update John Doe employee tracking with the new caption
+    let _ = employee_tracker::update_john_doe_with_screenshot(
+        &screenshot_id,
+        &screenshot.timestamp,
+        &caption_result.caption
+    ).await;
 
     Ok(AddToTrainingResult {
         screenshot_id: screenshot_id.clone(),
@@ -856,6 +874,38 @@ fn get_whisper_paths(app: tauri::AppHandle) -> Result<(String, String), String> 
     Ok(manager_guard.get_paths())
 }
 
+// ========== EMPLOYEE MONITORING COMMANDS ==========
+
+/// Get list of all employees
+#[tauri::command]
+fn get_employees() -> Result<serde_json::Value, String> {
+    use std::fs;
+
+    let employees_index_path = "employees/index.json";
+    let content = fs::read_to_string(employees_index_path)
+        .map_err(|e| format!("Failed to read employees index: {}", e))?;
+
+    let employees: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse employees index: {}", e))?;
+
+    Ok(employees)
+}
+
+/// Get usage data for a specific employee
+#[tauri::command]
+fn get_employee_usage(employee_id: String) -> Result<serde_json::Value, String> {
+    use std::fs;
+
+    let usage_path = format!("employees/{}_usage.json", employee_id);
+    let content = fs::read_to_string(&usage_path)
+        .map_err(|e| format!("Failed to read employee usage data: {}", e))?;
+
+    let usage_data: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse employee usage data: {}", e))?;
+
+    Ok(usage_data)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
@@ -934,6 +984,8 @@ pub fn run() {
             transcribe_audio_local,
             is_local_transcription_available,
             get_whisper_paths,
+            get_employees,
+            get_employee_usage,
         ])
         .setup(|app| {
             // Initialize logging system FIRST

@@ -1,0 +1,59 @@
+{
+  "employee_id": "david_miller",
+  "last_updated": "2025-11-12T00:06:41.188Z",
+  "total_screenshots": 33,
+  "software_usage": {
+    "communication": {
+      "count": 3,
+      "percentage": 9.090909090909092,
+      "instances": []
+    },
+    "browsers": {
+      "count": 7,
+      "percentage": 21.21212121212121,
+      "instances": []
+    },
+    "email": {
+      "count": 3,
+      "percentage": 9.090909090909092,
+      "instances": []
+    },
+    "productivity": {
+      "count": 0,
+      "percentage": 0,
+      "instances": []
+    },
+    "social_media": {
+      "count": 7,
+      "percentage": 21.21212121212121,
+      "instances": []
+    },
+    "design": {
+      "count": 3,
+      "percentage": 9.090909090909092,
+      "instances": []
+    },
+    "code_editors": {
+      "count": 3,
+      "percentage": 9.090909090909092,
+      "instances": []
+    },
+    "media": {
+      "count": 7,
+      "percentage": 21.21212121212121,
+      "instances": []
+    },
+    "terminal": {
+      "count": 0,
+      "percentage": 0,
+      "instances": []
+    }
+  },
+  "timeline": [
+    {
+      "date": "2025-11-12",
+      "screenshots": 33,
+      "most_used": "browsers"
+    }
+  ]
+}

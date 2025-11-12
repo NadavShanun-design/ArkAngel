@@ -1,0 +1,125 @@
+{
+  "employee_id": "john_doe",
+  "last_updated": "2025-11-12T01:16:02.969Z",
+  "total_screenshots": 9,
+  "software_usage": {
+    "browsers": {
+      "count": 0,
+      "percentage": 0,
+      "instances": []
+    },
+    "code_editors": {
+      "count": 0,
+      "percentage": 0,
+      "instances": []
+    },
+    "social_media": {
+      "count": 3,
+      "percentage": 33.33333333333333,
+      "instances": [
+        {
+          "screenshot_id": "737d3e59-7d21-4786-9c5e-29a3a1dd4ada",
+          "timestamp": "2025-11-12T01:12:01.273678+00:00",
+          "detected_category": "social_media",
+          "caption_preview": "The image shows a desktop computer screen displaying a social media profile of a man with a gray bea"
+        },
+        {
+          "screenshot_id": "bddd2af0-b4dd-4480-a8e0-434f58062356",
+          "timestamp": "2025-11-12T00:38:36.705721+00:00",
+          "detected_category": "social_media",
+          "caption_preview": "The image captures a computer screen displaying an open social media application on a monitor. The a"
+        },
+        {
+          "screenshot_id": "e1c55d0e-bcae-4562-965e-edd3b99454ff",
+          "timestamp": "2025-11-12T00:38:33.586978+00:00",
+          "detected_category": "social_media",
+          "caption_preview": "The image shows a computer screen displaying several social media apps on it. The most prominent app"
+        }
+      ]
+    },
+    "communication": {
+      "count": 1,
+      "percentage": 11.11111111111111,
+      "instances": [
+        {
+          "screenshot_id": "e5c25e11-b7ae-4a72-8f7c-46cbf43e3e21",
+          "timestamp": "2025-11-11T21:38:41.598172+00:00",
+          "detected_category": "communication",
+          "caption_preview": "The image shows a computer screen displaying an open document with a white background. The document "
+        }
+      ]
+    },
+    "productivity": {
+      "count": 2,
+      "percentage": 22.22222222222222,
+      "instances": [
+        {
+          "screenshot_id": "2b64ad26-04a3-4b1f-905f-0fd6ff500c65",
+          "timestamp": "2025-11-11T21:39:51.906160+00:00",
+          "detected_category": "productivity",
+          "caption_preview": "A computer screen displays a desktop with two windows open side by side on it. The first window is p"
+        },
+        {
+          "screenshot_id": "600ceec9-acfc-44c6-8fe2-5f1dec2301cd",
+          "timestamp": "2025-11-11T21:38:34.356268+00:00",
+          "detected_category": "productivity",
+          "caption_preview": "The image shows a close-up of a computer screen displaying an open document with multiple tabs and w"
+        }
+      ]
+    },
+    "email": {
+      "count": 1,
+      "percentage": 11.11111111111111,
+      "instances": [
+        {
+          "screenshot_id": "153e97bc-bdff-4931-a0e1-c5c8f5b512a1",
+          "timestamp": "2025-11-11T02:50:48.118016+00:00",
+          "detected_category": "email",
+          "caption_preview": "A computer screen displaying a desktop background with various applications running on it. The first"
+        }
+      ]
+    },
+    "design": {
+      "count": 0,
+      "percentage": 0,
+      "instances": []
+    },
+    "terminal": {
+      "count": 0,
+      "percentage": 0,
+      "instances": []
+    },
+    "media": {
+      "count": 1,
+      "percentage": 11.11111111111111,
+      "instances": [
+        {
+          "screenshot_id": "c9036319-1209-48bf-80e7-bfb2aa797d75",
+          "timestamp": "2025-11-11T21:52:56.471899+00:00",
+          "detected_category": "media",
+          "caption_preview": "The image shows a computer screen displaying an open video editing software. The background of the s"
+        }
+      ]
+    },
+    "other": {
+      "count": 1,
+      "percentage": 11.11111111111111,
+      "instances": [
+        {
+          "screenshot_id": "1c054ae3-2927-4e16-8bd8-3ee9bf3bca0b",
+          "timestamp": "2025-11-11T21:39:19.017054+00:00",
+          "detected_category": "other",
+          "caption_preview": "The image shows a computer monitor displaying an open webpage on a dark background. The screen has w",
+          "error": "Assignment to constant variable."
+        }
+      ]
+    }
+  },
+  "timeline": [
+    {
+      "date": "2025-11-12",
+      "screenshots": 9,
+      "most_used": "social_media"
+    }
+  ]
+}

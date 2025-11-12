@@ -71,6 +71,7 @@
     "react-hot-toast": "2.6.0",
     "react-icons": "^5.5.0",
     "react-markdown": "^10.1.0",
+    "recharts": "^3.4.1",
     "remark-gfm": "^4.0.1",
     "stripe": "^19.1.0",
     "tailwind-merge": "^3.3.1",

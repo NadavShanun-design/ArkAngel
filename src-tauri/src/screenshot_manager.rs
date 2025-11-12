@@ -176,10 +176,13 @@ fn add_to_index(screenshot: &ScreenshotInfo) -> Result<(), String> {
 pub fn get_all_screenshots() -> Result<Vec<ScreenshotInfo>, String> {
     let index = ScreenshotIndex::load()?;
 
-    // Validate that files still exist
+    // Validate that files still exist and have non-zero size
     let valid_screenshots: Vec<ScreenshotInfo> = index.screenshots
         .into_iter()
-        .filter(|s| Path::new(&s.file_path).exists())
+        .filter(|s| {
+            let path = Path::new(&s.file_path);
+            path.exists() && path.metadata().map(|m| m.len() > 0).unwrap_or(false)
+        })
         .collect();
 
     Ok(valid_screenshots)
