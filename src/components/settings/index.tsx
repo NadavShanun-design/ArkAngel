@@ -439,14 +439,45 @@ export const Settings: React.FC<SettingsProps> = ({ onOpenIntegrations }) => {
         <div className="border-t border-input/50 p-4">
           <div className="flex items-center justify-between">
             <div className="text-sm font-medium text-foreground">
-              Welcome, {isAuthenticated && user?.full_name ? user.full_name : 'Guest'}
+              {isAuthenticated ? (
+                user?.is_guest ? 'Welcome, Guest' : `Welcome, ${user?.full_name || 'User'}`
+              ) : (
+                'Welcome'
+              )}
             </div>
             <div className="flex gap-2">
               {isAuthenticated ? (
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={logout}
+                  onClick={async (e) => {
+                    console.log('[Settings] ===== SIGN OUT BUTTON CLICKED =====');
+                    console.log('[Settings] Event:', e);
+                    console.log('[Settings] isAuthenticated:', isAuthenticated);
+                    console.log('[Settings] user:', user);
+
+                    // Prevent any default behavior
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    try {
+                      console.log('[Settings] Starting logout process...');
+                      console.log('[Settings] Calling logout() function...');
+
+                      await logout();
+
+                      console.log('[Settings] ===== LOGOUT COMPLETED SUCCESSFULLY =====');
+                    } catch (error) {
+                      console.error('[Settings] ===== LOGOUT ERROR =====');
+                      console.error('[Settings] Error object:', error);
+                      console.error('[Settings] Error message:', (error as any).message);
+                      console.error('[Settings] Error stack:', (error as any).stack);
+
+                      // Show alert to user
+                      const errorMsg = (error as any).message || 'Unknown error';
+                      alert(`Failed to logout: ${errorMsg}\n\nCheck browser console for details.`);
+                    }
+                  }}
                   className="text-xs"
                 >
                   <LogOut className="h-3 w-3 mr-1" />

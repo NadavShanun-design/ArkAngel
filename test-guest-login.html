@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Guest Login</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Guest Login Test</h1>
+    <button onclick="testGuestLogin()">Test Guest Login</button>
+    <div id="output" style="margin-top: 20px; padding: 10px; background: #f0f0f0;"></div>
+
+    <script>
+        const SUPABASE_URL = 'https://oyexmxetjudbnuhairry.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95ZXhteGV0anVkYm51aGFpcnJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1MDQ5NTYsImV4cCI6MjA3NjA4MDk1Nn0.7Bjp1a6R-SlDHVx-lTLTfEAkHBfLlIiksmKKWy4vQww';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function testGuestLogin() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<p>Testing guest login...</p>';
+
+            try {
+                // Test 1: Sign in anonymously
+                console.log('Step 1: Signing in anonymously...');
+                output.innerHTML += '<p>Step 1: Signing in anonymously...</p>';
+
+                const { data, error } = await supabase.auth.signInAnonymously();
+
+                if (error) {
+                    console.error('Anonymous sign-in error:', error);
+                    output.innerHTML += `<p style="color: red;">❌ Error: ${error.message}</p>`;
+                    return;
+                }
+
+                console.log('Anonymous sign-in success:', data);
+                output.innerHTML += `<p style="color: green;">✅ Anonymous user created! User ID: ${data.user.id}</p>`;
+
+                // Test 2: Try to create profile
+                console.log('Step 2: Creating profile...');
+                output.innerHTML += '<p>Step 2: Creating profile...</p>';
+
+                const fakeName = 'TestUser' + Math.floor(Math.random() * 1000);
+
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .insert({
+                        id: data.user.id,
+                        email: null,
+                        full_name: fakeName,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                    })
+                    .select()
+                    .single();
+
+                if (profileError) {
+                    console.error('Profile creation error:', profileError);
+                    output.innerHTML += `<p style="color: red;">❌ Profile Error: ${profileError.message}</p>`;
+                    output.innerHTML += `<p style="color: orange;">Details: ${JSON.stringify(profileError)}</p>`;
+                    return;
+                }
+
+                console.log('Profile created:', profile);
+                output.innerHTML += `<p style="color: green;">✅ Profile created! Name: ${profile.full_name}</p>`;
+                output.innerHTML += `<p style="color: blue;">Full profile: ${JSON.stringify(profile, null, 2)}</p>`;
+
+            } catch (err) {
+                console.error('Unexpected error:', err);
+                output.innerHTML += `<p style="color: red;">❌ Unexpected Error: ${err.message}</p>`;
+            }
+        }
+
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            console.log('Page loaded, ready to test');
+            document.getElementById('output').innerHTML = '<p>Click button to test guest login</p>';
+        });
+    </script>
+</body>
+</html>

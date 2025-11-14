@@ -4,6 +4,7 @@ use std::fs;
 use std::path::Path;
 use chrono::Utc;
 use reqwest;
+use crate::supabase_client::{SupabaseClient, build_screenshot_insert};
 
 const EMPLOYEES_DIR: &str = "./employees";
 const CATEGORIES_FILE: &str = "./software_categories.json";
@@ -199,6 +200,56 @@ Category:",
     }
 }
 
+/// Sync screenshot to Supabase (if user is authenticated and has organization)
+async fn sync_to_supabase(
+    user_id: &str,
+    organization_id: &str,
+    screenshot_id: &str,
+    timestamp: &str,
+    caption: &str,
+    detected_category: &str,
+) -> Result<(), String> {
+    // Only attempt to sync if environment variables are set
+    let supabase_url = std::env::var("VITE_SUPABASE_URL");
+    if supabase_url.is_err() {
+        println!("[EmployeeTracker] Supabase URL not configured, skipping sync");
+        return Ok(());
+    }
+
+    println!("[EmployeeTracker] Syncing screenshot to Supabase...");
+
+    match SupabaseClient::new() {
+        Ok(client) => {
+            let screenshot = build_screenshot_insert(
+                user_id.to_string(),
+                organization_id.to_string(),
+                screenshot_id.to_string(),
+                format!("screenshots/{}/{}.png", user_id, screenshot_id),
+                timestamp.to_string(),
+                Some(caption.to_string()),
+                Some(detected_category.to_string()),
+            );
+
+            match client.insert_screenshot(screenshot).await {
+                Ok(uuid) => {
+                    println!("[EmployeeTracker] Successfully synced to Supabase with ID: {}", uuid);
+                    Ok(())
+                }
+                Err(e) => {
+                    eprintln!("[EmployeeTracker] Failed to sync to Supabase: {}", e);
+                    // Don't fail the whole operation if Supabase sync fails
+                    Ok(())
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("[EmployeeTracker] Supabase client initialization failed: {}", e);
+            // Don't fail the whole operation if Supabase is not configured
+            Ok(())
+        }
+    }
+}
+
 /// Update John Doe's employee data with a new screenshot
 pub async fn update_john_doe_with_screenshot(
     screenshot_id: &str,
@@ -275,8 +326,27 @@ pub async fn update_john_doe_with_screenshot(
     // Update timestamp
     data.last_updated = Utc::now().to_rfc3339();
 
-    // Save updated data
+    // Save updated data locally
     save_john_doe_data(&data)?;
+
+    // Sync to Supabase (non-blocking, will skip if not configured or no user context)
+    // Get user context from global state (set by frontend when user logs in)
+    if let Some(user_ctx) = crate::user_context::get_user_context() {
+        if let Some(org_id) = user_ctx.organization_id {
+            let _ = sync_to_supabase(
+                &user_ctx.user_id,
+                &org_id,
+                screenshot_id,
+                timestamp,
+                caption,
+                &detected_category,
+            ).await;
+        } else {
+            println!("[EmployeeTracker] User has no organization_id, skipping Supabase sync");
+        }
+    } else {
+        println!("[EmployeeTracker] No user context available, skipping Supabase sync");
+    }
 
     println!("[EmployeeTracker] Successfully updated John Doe data");
     Ok(())

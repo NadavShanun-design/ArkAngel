@@ -9,7 +9,7 @@ import { Loader2, Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react';
 import { emit } from '@tauri-apps/api/event';
 
 export const AuthForm: React.FC = () => {
-  const { login, register, isLoading, error, clearError } = useAuth();
+  const { user, isAuthenticated, login, loginAsGuest, logout, register, isLoading, error, clearError } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
@@ -55,6 +55,23 @@ export const AuthForm: React.FC = () => {
     };
   }, []);
 
+  // Reset form state when user logs out (isAuthenticated changes from true to false)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setEmailSent(false);
+      setSignInSuccess(false);
+      setIsSignUp(false);
+      setShowPassword(false);
+      setFormData({
+        email: '',
+        password: '',
+        full_name: '',
+        phone: '',
+      });
+      clearError();
+    }
+  }, [isAuthenticated, clearError]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -86,11 +103,66 @@ export const AuthForm: React.FC = () => {
     }
   };
 
-  const handleGuestSignIn = () => {
-    // For guest mode, just close the auth window without logging in
-    // The app will continue in guest mode
-    emit('auth-success');
+  const handleGuestSignIn = async () => {
+    try {
+      console.log('[AuthForm] Guest sign-in clicked');
+      await loginAsGuest();  // Create anonymous Supabase user
+      console.log('[AuthForm] Guest login successful');
+      // Emit auth-success event immediately to trigger onboarding
+      console.log('[AuthForm] Emitting auth-success event');
+      emit('auth-success');
+    } catch (error: any) {
+      console.error('[AuthForm] Guest sign-in error:', error);
+      console.error('[AuthForm] Error details:', error.message);
+      // Show error to user
+      alert(`Guest sign-in failed: ${error.message || 'Please check your internet connection and try again.'}`);
+    }
   };
+
+  // If user is already authenticated AND has a role, show continue message
+  // If they don't have a role yet, the Auth.tsx will show onboarding instead
+  if (isAuthenticated && user?.role) {
+    return (
+      <div className="w-full max-w-md mx-auto">
+        {/* ArkAngel Logo */}
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 mx-auto mb-4 bg-black rounded-xl flex items-center justify-center shadow-md">
+            <span className="text-2xl font-bold text-white">A</span>
+          </div>
+          <h1 className="text-2xl font-bold text-black">ArkAngel</h1>
+          <p className="text-gray-500 mt-2">
+            {user?.is_guest ? 'Signed in as Guest' : 'Already Signed In'}
+          </p>
+        </div>
+
+        <Card className="shadow-lg border border-gray-200 bg-white">
+          <CardHeader className="space-y-1 pb-4">
+            <CardTitle className="text-xl font-semibold text-center text-black">
+              You're Already Signed In
+            </CardTitle>
+            <CardDescription className="text-center text-gray-500">
+              {user?.is_guest
+                ? "You're using a guest account. Use Sign Out in Settings to switch accounts."
+                : `Welcome back, ${user?.full_name || 'User'}! Use Sign Out in Settings to switch accounts.`
+              }
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <Button
+              className="w-full bg-black text-white hover:bg-gray-800"
+              onClick={() => {
+                // Close auth window
+                emit('auth-success');
+              }}
+            >
+              Close
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -126,19 +198,30 @@ export const AuthForm: React.FC = () => {
         <Card className="shadow-lg border border-gray-200 bg-white">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl font-semibold text-center text-green-600">
-              Check Your Email
+              Verify Your Email
             </CardTitle>
+            <CardDescription className="text-center text-gray-500">
+              We've sent a confirmation link to your email address
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Alert className="bg-green-50 border-green-200">
               <Mail className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">
-                We've sent a confirmation email to <strong>{formData.email}</strong>.
-                Please click the link in the email to verify your account and complete signup.
+                Check your inbox at <strong>{formData.email}</strong> for a confirmation email from ArkAngel.
+                Click the verification link to activate your account.
               </AlertDescription>
             </Alert>
-            <p className="text-sm text-gray-500 text-center">
-              After confirming your email, you can sign in and start using ArkAngel!
+            <div className="space-y-2 text-sm text-gray-600">
+              <p className="font-medium">Next steps:</p>
+              <ol className="list-decimal list-inside space-y-1 ml-2">
+                <li>Open the email we sent you</li>
+                <li>Click the verification link</li>
+                <li>Return here and sign in with your credentials</li>
+              </ol>
+            </div>
+            <p className="text-xs text-gray-500 text-center">
+              Didn't receive the email? Check your spam folder or try signing up again.
             </p>
             <Button
               onClick={() => {

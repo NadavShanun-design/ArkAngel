@@ -15,6 +15,8 @@ mod whisper_local;  // NEW: On-device Whisper transcription (pre-built binary)
 mod screenshot_manager;  // NEW: Screenshot capture and storage
 mod vlm_captioner;  // NEW: Vision Language Model integration
 mod employee_tracker;  // NEW: Employee monitoring and software usage tracking
+mod supabase_client;  // NEW: Supabase client for multi-tenant employer/employee system
+mod user_context;  // NEW: Global user context for auth state
 
 use std::process::{Command as StdCommand, Stdio, Child};
 use std::sync::{Arc, Mutex};
@@ -26,6 +28,24 @@ use tauri::Emitter;
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+// User context commands for authentication state
+#[tauri::command]
+fn set_user_context(user_id: String, organization_id: Option<String>, role: Option<String>) -> Result<(), String> {
+    user_context::set_user_context(user_id, organization_id, role);
+    Ok(())
+}
+
+#[tauri::command]
+fn get_user_context() -> Result<Option<user_context::UserContext>, String> {
+    Ok(user_context::get_user_context())
+}
+
+#[tauri::command]
+fn clear_user_context() -> Result<(), String> {
+    user_context::clear_user_context();
+    Ok(())
 }
 
 // Test command to verify events work
@@ -876,6 +896,78 @@ fn get_whisper_paths(app: tauri::AppHandle) -> Result<(String, String), String> 
 
 // ========== EMPLOYEE MONITORING COMMANDS ==========
 
+// ============================================================================
+// SUPABASE MULTI-TENANT COMMANDS
+// ============================================================================
+
+/// Sync screenshot to Supabase database
+#[tauri::command]
+async fn sync_screenshot_to_supabase(
+    user_id: String,
+    organization_id: String,
+    screenshot_id: String,
+    file_path: String,
+    timestamp: String,
+    caption: Option<String>,
+    detected_category: Option<String>,
+) -> Result<String, String> {
+    use supabase_client::{SupabaseClient, build_screenshot_insert};
+
+    let client = SupabaseClient::new()
+        .map_err(|e| format!("Failed to initialize Supabase client: {}", e))?;
+
+    let screenshot = build_screenshot_insert(
+        user_id,
+        organization_id,
+        screenshot_id,
+        file_path,
+        timestamp,
+        caption,
+        detected_category,
+    );
+
+    client.insert_screenshot(screenshot)
+        .await
+        .map_err(|e| format!("Failed to sync screenshot to Supabase: {}", e))
+}
+
+/// Get employee analytics from Supabase
+#[tauri::command]
+async fn get_supabase_employee_analytics(user_id: String) -> Result<serde_json::Value, String> {
+    use supabase_client::SupabaseClient;
+
+    let client = SupabaseClient::new()
+        .map_err(|e| format!("Failed to initialize Supabase client: {}", e))?;
+
+    let analytics = client.get_employee_analytics(&user_id)
+        .await
+        .map_err(|e| format!("Failed to fetch employee analytics: {}", e))?;
+
+    match analytics {
+        Some(data) => serde_json::to_value(data)
+            .map_err(|e| format!("Failed to serialize analytics: {}", e)),
+        None => Ok(serde_json::json!({
+            "total_screenshots": 0,
+            "category_breakdown": {},
+            "timeline": [],
+            "most_used_category": null
+        }))
+    }
+}
+
+/// Manually trigger analytics update for a user
+#[tauri::command]
+async fn update_supabase_analytics(user_id: String) -> Result<(), String> {
+    use supabase_client::SupabaseClient;
+
+    let client = SupabaseClient::new()
+        .map_err(|e| format!("Failed to initialize Supabase client: {}", e))?;
+
+    client.update_employee_analytics(&user_id)
+        .await
+        .map_err(|e| format!("Failed to update analytics: {}", e))
+}
+
 /// Get list of all employees
 #[tauri::command]
 fn get_employees() -> Result<serde_json::Value, String> {
@@ -913,6 +1005,9 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             greet,
+            set_user_context,
+            get_user_context,
+            clear_user_context,
             test_event_system,
             get_app_version,
             set_window_height,
@@ -986,6 +1081,9 @@ pub fn run() {
             get_whisper_paths,
             get_employees,
             get_employee_usage,
+            sync_screenshot_to_supabase,
+            get_supabase_employee_analytics,
+            update_supabase_analytics,
         ])
         .setup(|app| {
             // Initialize logging system FIRST

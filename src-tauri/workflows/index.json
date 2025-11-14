@@ -1,6 +1,28 @@
 {
   "screenshots": [
     {
+      "id": "27179392-5463-445a-8e50-efb02986404f",
+      "file_path": "./workflows/screenshot_27179392-5463-445a-8e50-efb02986404f.png",
+      "timestamp": "2025-11-13T21:28:08.168582+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 1549636,
+      "added_to_training": false,
+      "caption": "The image shows a computer screen displaying two video calls, with two users visible on each side of the frame. Both individuals have dark hair and are engaged in separate conversations while sharing screens for reference or collaboration. One person is using a keyboard to take notes during their discussion, possibly referring to an important document displayed on the screen.",
+      "caption_generated_at": "2025-11-13T21:28:13.308179+00:00"
+    },
+    {
+      "id": "75cdfdc4-b678-421f-bb76-5bdb71f703a1",
+      "file_path": "./workflows/screenshot_75cdfdc4-b678-421f-bb76-5bdb71f703a1.png",
+      "timestamp": "2025-11-13T21:28:04.816407+00:00",
+      "width": 1918,
+      "height": 1246,
+      "file_size": 1583882,
+      "added_to_training": false,
+      "caption": "In the image, there is a computer screen with multiple windows open at once. The central window displays two images of a person talking to someone else over video chat. Above the main window, another image shows an empty notebook or white piece of paper with text on it. Below these windows, there are three other images representing different users. \n\nThe first user's image depicts a man looking at something on the computer screen while engaged in a conversation via video chat. The second user is seen typing on the keyboard, possibly writing down information or instructions for the person talking over the call. The third user appears to be reading from another source of text. Additionally, there are two other images featuring a green background and black text, which could potentially",
+      "caption_generated_at": "2025-11-13T21:28:10.841973+00:00"
+    },
+    {
       "id": "60d8e764-0fc4-401f-805a-0739af9a9ac5",
       "file_path": "./workflows/screenshot_60d8e764-0fc4-401f-805a-0739af9a9ac5.png",
       "timestamp": "2025-11-12T06:56:51.849255+00:00",

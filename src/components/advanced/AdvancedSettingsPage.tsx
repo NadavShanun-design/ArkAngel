@@ -14,6 +14,7 @@ import { createCheckoutSession, createPortalSession, STRIPE_PRICES, type Subscri
 import { TranscriptViewer } from "@/components/transcripts";
 import { CreatePersonaWizard } from "@/components/training";
 import EmployeesPage from "@/components/employees/EmployeesPage";
+import PerformancePage from "@/components/advanced/PerformancePage";
 import ReactMarkdown from "react-markdown";
 import { convertFileSrc } from "@tauri-apps/api/core";
 
@@ -30,10 +31,11 @@ type SectionKey =
   | "transcripts"
   | "photos"
   | "employees"
+  | "performance"
   | "training"
   | "manage-data";
 
-const sections: { key: SectionKey; label: string }[] = [
+const allSections: { key: SectionKey; label: string; role?: 'employer' | 'employee' }[] = [
   { key: "profile", label: "Profile" },
   { key: "angel-profiles", label: "Angel Profiles" },
   { key: "notifications", label: "Notifications" },
@@ -45,16 +47,49 @@ const sections: { key: SectionKey; label: string }[] = [
   { key: "documents", label: "Documents" },
   { key: "transcripts", label: "Transcripts" },
   { key: "photos", label: "Photos" },
-  { key: "employees", label: "Employees" },
+  { key: "employees", label: "Employees", role: 'employer' },
+  { key: "performance", label: "Performance", role: 'employee' },
   { key: "training", label: "Training" },
   { key: "manage-data", label: "Manage Data" },
 ];
 
 export const AdvancedSettingsPage: React.FC = () => {
+  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [active, setActive] = useState<SectionKey>("profile");
 
+  // Debug: Log when component mounts
+  useEffect(() => {
+    console.log('[AdvancedSettingsPage] Component mounted');
+    console.log('[AdvancedSettingsPage] User:', user);
+    return () => {
+      console.log('[AdvancedSettingsPage] Component unmounting');
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log('[AdvancedSettingsPage] User changed:', user);
+  }, [user]);
+
+  // Filter sections based on user role
+  const sections = useMemo(() => {
+    const filtered = allSections.filter(section => {
+      // If section has no role requirement, show it to everyone
+      if (!section.role) return true;
+
+      // If user has no role, hide role-specific sections
+      if (!user?.role) return false;
+
+      // Show section only if user's role matches
+      return section.role === user.role;
+    });
+    console.log('[AdvancedSettingsPage] Filtered sections:', filtered.length, filtered.map(s => s.key));
+    return filtered;
+  }, [user?.role]);
+
   // Keep internal state only; external routing handled in main.tsx (/settings)
+
+  console.log('[AdvancedSettingsPage] Rendering with active section:', active);
 
   return (
     <div className="w-screen h-screen overflow-hidden grid" style={{ gridTemplateColumns: sidebarOpen ? "240px 1fr" : "56px 1fr" }}>
@@ -108,7 +143,8 @@ export const AdvancedSettingsPage: React.FC = () => {
             {active === "documents" && <DocumentsSection />}
             {active === "transcripts" && <TranscriptsSection />}
             {active === "photos" && <PhotosSection />}
-            {active === "employees" && <EmployeesSection />}
+            {active === "employees" && user?.role === 'employer' && <EmployeesSection />}
+            {active === "performance" && user?.role === 'employee' && <PerformancePage />}
             {active === "training" && <TrainingSection />}
             {active === "manage-data" && <ManageDataSection />}
           </div>
@@ -770,6 +806,41 @@ const ProfileSection: React.FC = () => {
           )}
         </div>
       </SpotlightArea>
+
+      {/* Employer Code Section - Only visible for employers */}
+      {user.role === 'employer' && user.employer_code && (
+        <SpotlightArea className="p-4 border border-purple-300 dark:border-purple-700 rounded-md bg-purple-50 dark:bg-purple-900/20">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-sm text-purple-900 dark:text-purple-100">Employer Code</h3>
+                <p className="text-xs text-purple-700 dark:text-purple-300">Share this code with employees to link them to your organization</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 p-4 bg-white dark:bg-zinc-900 border border-purple-200 dark:border-purple-800 rounded-md">
+                <p className="text-2xl font-bold text-center tracking-wider text-purple-600 dark:text-purple-400 select-all">
+                  {user.employer_code}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  navigator.clipboard.writeText(user.employer_code!);
+                  // Could add a toast notification here
+                }}
+                className="border-purple-300 text-purple-700 hover:bg-purple-100 dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-900/30"
+              >
+                Copy Code
+              </Button>
+            </div>
+            <p className="text-xs text-purple-600 dark:text-purple-400">
+              Organization: {user.organization_id ? 'Linked' : 'Not linked'}
+            </p>
+          </div>
+        </SpotlightArea>
+      )}
     </div>
   );
 };
@@ -2985,10 +3056,23 @@ const PhotosSection: React.FC = () => {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
 
+      interface ScreenshotInfo {
+        id: string;
+        file_path: string;
+        timestamp: string;
+        width: number;
+        height: number;
+        file_size: number;
+        added_to_training: boolean;
+        training_added_at?: string;
+        caption?: string;
+        caption_generated_at?: string;
+      }
+
       // Try to capture with VLM caption first (requires Ollama)
       try {
         const ollamaUrl = localStorage.getItem('ollama-url') || 'http://localhost:11434';
-        const result = await invoke('capture_screenshot_with_caption', { ollamaUrl });
+        const result = await invoke<ScreenshotInfo>('capture_screenshot_with_caption', { ollamaUrl });
 
         const captionInfo = result.caption
           ? `\n\n🤖 AI Caption Generated:\n${result.caption.substring(0, 150)}${result.caption.length > 150 ? '...' : ''}`
@@ -2998,7 +3082,7 @@ const PhotosSection: React.FC = () => {
       } catch (captionError) {
         // Fallback: Capture without caption
         console.log('[Screenshot] VLM caption failed, capturing without caption:', captionError);
-        const result = await invoke('capture_screenshot');
+        const result = await invoke<ScreenshotInfo>('capture_screenshot');
         alert(`✅ Screenshot captured successfully!\n\nSaved to: ${result.file_path}\nSize: ${result.width}x${result.height}\n\nNote: Caption generation skipped (Ollama not available)`);
       }
 
@@ -3163,10 +3247,10 @@ const PhotosSection: React.FC = () => {
                       if (!selectionMode) {
                         e.stopPropagation();
                         try {
-                          const { open } = await import('@tauri-apps/plugin-opener');
+                          const { openUrl } = await import('@tauri-apps/plugin-opener');
                           // Convert relative path to absolute
                           const absolutePath = photo.file_path.replace('./workflows/', '/Users/nadavshanun/Downloads/ArkAngel2/src-tauri/workflows/');
-                          await open(absolutePath);
+                          await openUrl(absolutePath);
                         } catch (err) {
                           console.error('Failed to open screenshot:', err);
                           alert(`Failed to open screenshot: ${err}`);
@@ -3253,9 +3337,9 @@ const PhotosSection: React.FC = () => {
                           onClick={async (e) => {
                             e.stopPropagation();
                             try {
-                              const { open } = await import('@tauri-apps/plugin-opener');
+                              const { openUrl } = await import('@tauri-apps/plugin-opener');
                               const absolutePath = photo.file_path.replace('./workflows/', '/Users/nadavshanun/Downloads/ArkAngel2/src-tauri/workflows/');
-                              await open(absolutePath);
+                              await openUrl(absolutePath);
                             } catch (err) {
                               console.error('Failed to open screenshot:', err);
                               alert(`Failed to open: ${err}`);

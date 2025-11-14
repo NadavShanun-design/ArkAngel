@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { invoke } from '@tauri-apps/api/core';
+import { OnboardingPage } from '@/components/auth/OnboardingPage';
 
 export const ProfilePage: React.FC = () => {
   const { user, logout, updateUserProfile, isLoading, isAuthenticated } = useAuth();
@@ -58,8 +59,8 @@ export const ProfilePage: React.FC = () => {
 
   const handleLogout = async () => {
     await logout();
-    // Refresh the page to show the sign-in prompt
-    window.location.reload();
+    // Redirect to home page after logout
+    window.location.href = '/';
   };
 
   const handleAuthClick = async () => {
@@ -97,6 +98,11 @@ export const ProfilePage: React.FC = () => {
         </Card>
       </div>
     );
+  }
+
+  // Check if user needs to complete onboarding (no role assigned)
+  if (isAuthenticated && user && !user.role) {
+    return <OnboardingPage />;
   }
 
   const getInitials = () => {

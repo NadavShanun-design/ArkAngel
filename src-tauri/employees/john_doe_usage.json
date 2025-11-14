@@ -1,44 +1,8 @@
 {
   "employee_id": "john_doe",
-  "last_updated": "2025-11-12T06:56:55.437355+00:00",
-  "total_screenshots": 12,
+  "last_updated": "2025-11-13T21:28:14.711952+00:00",
+  "total_screenshots": 13,
   "software_usage": {
-    "social_media": {
-      "count": 3,
-      "percentage": 25.0,
-      "instances": [
-        {
-          "screenshot_id": "737d3e59-7d21-4786-9c5e-29a3a1dd4ada",
-          "timestamp": "2025-11-12T01:12:01.273678+00:00",
-          "detected_category": "social_media",
-          "caption_preview": "The image shows a desktop computer screen displaying a social media profile of a man with a gray bea"
-        },
-        {
-          "screenshot_id": "bddd2af0-b4dd-4480-a8e0-434f58062356",
-          "timestamp": "2025-11-12T00:38:36.705721+00:00",
-          "detected_category": "social_media",
-          "caption_preview": "The image captures a computer screen displaying an open social media application on a monitor. The a"
-        },
-        {
-          "screenshot_id": "e1c55d0e-bcae-4562-965e-edd3b99454ff",
-          "timestamp": "2025-11-12T00:38:33.586978+00:00",
-          "detected_category": "social_media",
-          "caption_preview": "The image shows a computer screen displaying several social media apps on it. The most prominent app"
-        }
-      ]
-    },
-    "browsers": {
-      "count": 1,
-      "percentage": 8.333333333333332,
-      "instances": [
-        {
-          "screenshot_id": "81b0a897-047e-4f45-b136-9898ac392002",
-          "timestamp": "2025-11-12T06:54:11.643780+00:00",
-          "detected_category": "browsers",
-          "caption_preview": "The image shows a computer screen displaying three windows open on it. In the top left corner of the"
-        }
-      ]
-    },
     "terminal": {
       "count": 0,
       "percentage": 0.0,
@@ -46,7 +10,7 @@
     },
     "media": {
       "count": 1,
-      "percentage": 8.333333333333332,
+      "percentage": 7.6923076923076925,
       "instances": [
         {
           "screenshot_id": "c9036319-1209-48bf-80e7-bfb2aa797d75",
@@ -56,51 +20,9 @@
         }
       ]
     },
-    "productivity": {
-      "count": 2,
-      "percentage": 16.666666666666664,
-      "instances": [
-        {
-          "screenshot_id": "2b64ad26-04a3-4b1f-905f-0fd6ff500c65",
-          "timestamp": "2025-11-11T21:39:51.906160+00:00",
-          "detected_category": "productivity",
-          "caption_preview": "A computer screen displays a desktop with two windows open side by side on it. The first window is p"
-        },
-        {
-          "screenshot_id": "600ceec9-acfc-44c6-8fe2-5f1dec2301cd",
-          "timestamp": "2025-11-11T21:38:34.356268+00:00",
-          "detected_category": "productivity",
-          "caption_preview": "The image shows a close-up of a computer screen displaying an open document with multiple tabs and w"
-        }
-      ]
-    },
-    "other": {
-      "count": 1,
-      "percentage": 8.333333333333332,
-      "instances": [
-        {
-          "screenshot_id": "1c054ae3-2927-4e16-8bd8-3ee9bf3bca0b",
-          "timestamp": "2025-11-11T21:39:19.017054+00:00",
-          "detected_category": "other",
-          "caption_preview": "The image shows a computer monitor displaying an open webpage on a dark background. The screen has w"
-        }
-      ]
-    },
-    "email": {
-      "count": 1,
-      "percentage": 8.333333333333332,
-      "instances": [
-        {
-          "screenshot_id": "153e97bc-bdff-4931-a0e1-c5c8f5b512a1",
-          "timestamp": "2025-11-11T02:50:48.118016+00:00",
-          "detected_category": "email",
-          "caption_preview": "A computer screen displaying a desktop background with various applications running on it. The first"
-        }
-      ]
-    },
     "design": {
       "count": 2,
-      "percentage": 16.666666666666664,
+      "percentage": 15.384615384615385,
       "instances": [
         {
           "screenshot_id": "ccb879c4-9ceb-42ca-8b4d-3b9dd67ba8ed",
@@ -121,15 +43,99 @@
       "percentage": 0.0,
       "instances": []
     },
-    "communication": {
+    "other": {
       "count": 1,
-      "percentage": 8.333333333333332,
+      "percentage": 7.6923076923076925,
+      "instances": [
+        {
+          "screenshot_id": "1c054ae3-2927-4e16-8bd8-3ee9bf3bca0b",
+          "timestamp": "2025-11-11T21:39:19.017054+00:00",
+          "detected_category": "other",
+          "caption_preview": "The image shows a computer monitor displaying an open webpage on a dark background. The screen has w"
+        }
+      ]
+    },
+    "browsers": {
+      "count": 1,
+      "percentage": 7.6923076923076925,
+      "instances": [
+        {
+          "screenshot_id": "81b0a897-047e-4f45-b136-9898ac392002",
+          "timestamp": "2025-11-12T06:54:11.643780+00:00",
+          "detected_category": "browsers",
+          "caption_preview": "The image shows a computer screen displaying three windows open on it. In the top left corner of the"
+        }
+      ]
+    },
+    "communication": {
+      "count": 2,
+      "percentage": 15.384615384615385,
       "instances": [
         {
           "screenshot_id": "e5c25e11-b7ae-4a72-8f7c-46cbf43e3e21",
           "timestamp": "2025-11-11T21:38:41.598172+00:00",
           "detected_category": "communication",
           "caption_preview": "The image shows a computer screen displaying an open document with a white background. The document "
+        },
+        {
+          "screenshot_id": "27179392-5463-445a-8e50-efb02986404f",
+          "timestamp": "2025-11-13T21:28:08.168582+00:00",
+          "detected_category": "communication",
+          "caption_preview": "The image shows a computer screen displaying two video calls, with two users visible on each side of"
+        }
+      ]
+    },
+    "productivity": {
+      "count": 2,
+      "percentage": 15.384615384615385,
+      "instances": [
+        {
+          "screenshot_id": "2b64ad26-04a3-4b1f-905f-0fd6ff500c65",
+          "timestamp": "2025-11-11T21:39:51.906160+00:00",
+          "detected_category": "productivity",
+          "caption_preview": "A computer screen displays a desktop with two windows open side by side on it. The first window is p"
+        },
+        {
+          "screenshot_id": "600ceec9-acfc-44c6-8fe2-5f1dec2301cd",
+          "timestamp": "2025-11-11T21:38:34.356268+00:00",
+          "detected_category": "productivity",
+          "caption_preview": "The image shows a close-up of a computer screen displaying an open document with multiple tabs and w"
+        }
+      ]
+    },
+    "email": {
+      "count": 1,
+      "percentage": 7.6923076923076925,
+      "instances": [
+        {
+          "screenshot_id": "153e97bc-bdff-4931-a0e1-c5c8f5b512a1",
+          "timestamp": "2025-11-11T02:50:48.118016+00:00",
+          "detected_category": "email",
+          "caption_preview": "A computer screen displaying a desktop background with various applications running on it. The first"
+        }
+      ]
+    },
+    "social_media": {
+      "count": 3,
+      "percentage": 23.076923076923077,
+      "instances": [
+        {
+          "screenshot_id": "737d3e59-7d21-4786-9c5e-29a3a1dd4ada",
+          "timestamp": "2025-11-12T01:12:01.273678+00:00",
+          "detected_category": "social_media",
+          "caption_preview": "The image shows a desktop computer screen displaying a social media profile of a man with a gray bea"
+        },
+        {
+          "screenshot_id": "bddd2af0-b4dd-4480-a8e0-434f58062356",
+          "timestamp": "2025-11-12T00:38:36.705721+00:00",
+          "detected_category": "social_media",
+          "caption_preview": "The image captures a computer screen displaying an open social media application on a monitor. The a"
+        },
+        {
+          "screenshot_id": "e1c55d0e-bcae-4562-965e-edd3b99454ff",
+          "timestamp": "2025-11-12T00:38:33.586978+00:00",
+          "detected_category": "social_media",
+          "caption_preview": "The image shows a computer screen displaying several social media apps on it. The most prominent app"
         }
       ]
     }
@@ -138,6 +144,11 @@
     {
       "date": "2025-11-12",
       "screenshots": 12,
+      "most_used": "social_media"
+    },
+    {
+      "date": "2025-11-13",
+      "screenshots": 1,
       "most_used": "social_media"
     }
   ]

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArkAngel - Email Confirmed</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 50px 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+        .success-icon {
+            width: 100px;
+            height: 100px;
+            background: #10b981;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            font-size: 50px;
+            color: white;
+            animation: scaleIn 0.5s ease-out;
+        }
+        @keyframes scaleIn {
+            from {
+                transform: scale(0);
+            }
+            to {
+                transform: scale(1);
+            }
+        }
+        h1 {
+            color: #1f2937;
+            font-size: 32px;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+        .subtitle {
+            color: #10b981;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 24px;
+        }
+        p {
+            color: #6b7280;
+            font-size: 17px;
+            line-height: 1.7;
+            margin-bottom: 32px;
+        }
+        .instructions {
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 32px 0;
+            border: 2px solid #d1d5db;
+        }
+        .instructions h2 {
+            color: #1f2937;
+            font-size: 20px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        .instructions ol {
+            color: #374151;
+            padding-left: 24px;
+            text-align: left;
+            font-size: 16px;
+            line-height: 2;
+        }
+        .instructions li {
+            margin-bottom: 12px;
+        }
+        .highlight {
+            background: #fef3c7;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            color: #92400e;
+        }
+        .footer {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb;
+            color: #9ca3af;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">✓</div>
+        <h1>Email Confirmed!</h1>
+        <p class="subtitle">Your account is ready to use</p>
+        <p>Your email address has been successfully verified. You can now sign in to ArkAngel.</p>
+        
+        <div class="instructions">
+            <h2>What to do next:</h2>
+            <ol>
+                <li>Go back to the <span class="highlight">ArkAngel desktop app</span></li>
+                <li>Click <span class="highlight">"Sign In"</span></li>
+                <li>Enter your <span class="highlight">email</span> and <span class="highlight">password</span></li>
+                <li>You're all set! 🎉</li>
+            </ol>
+        </div>
+
+        <div class="footer">
+            You can close this page now. Your email is confirmed and you can sign in from the app.
+        </div>
+    </div>
+</body>
+</html>
+
