@@ -163,6 +163,83 @@ export default function CompanyInsights() {
          * - Aggregates screenshot data from 'screenshots' table filtered by organization_id
          * - Calculates analytics across all employees in the organization
          * - Returns CompanyAnalytics object with real employee performance data
+         * 
+         * - The sample JSON response from Supabase will look like this
+         * 
+         * {
+  "total_employees": 12,
+  "total_screenshots": 2450,
+  "company_category_breakdown": {
+    "development": {
+      "percentage": 65.5,
+      "total_count": 1605,
+      "employee_count": 8
+    },
+    "communication": {
+      "percentage": 20.0,
+      "total_count": 490,
+      "employee_count": 12
+    },
+    "social_media": {
+      "percentage": 5.2,
+      "total_count": 127,
+      "employee_count": 4
+    }
+  },
+  "employee_performance": [
+    {
+      "user_id": "a1b2c3d4-...",
+      "employee_name": "Sarah Jenkins",
+      "employee_email": "sarah.j@company.com",
+      "total_screenshots": 450,
+      "most_used_category": "development",
+      "last_updated": "2025-01-15T14:30:00Z"
+    },
+    {
+      "user_id": "e5f6g7h8-...",
+      "employee_name": "Mike Ross",
+      "employee_email": "m.ross@company.com",
+      "total_screenshots": 380,
+      "most_used_category": "design",
+      "last_updated": "2025-01-15T14:15:00Z"
+    }
+  ],
+  "productivity_trends": [
+    {
+      "date": "2025-01-15",
+      "total_screenshots": 850,
+      "active_employees": 12
+    },
+    {
+      "date": "2025-01-14",
+      "total_screenshots": 790,
+      "active_employees": 11
+    }
+  ],
+  "insights": [
+    {
+      "type": "success",
+      "title": "Top Performers Identified",
+      "priority": 3,
+      "message": "3 employee(s) in top 20% for productivity. Setting excellent standards.",
+      "action": "Recognize achievements and document best practices for team learning"
+    },
+    {
+      "type": "info",
+      "title": "Primary Focus Area",
+      "priority": 4,
+      "message": "Team focuses on development (65.5% of activity). Ensure tools and training are optimized.",
+      "action": "Audit tool availability, schedule team training on advanced features"
+    },
+    {
+      "type": "success",
+      "title": "Healthy Social Media Balance",
+      "priority": 5,
+      "message": "Social media: 5.2% of activity. Team maintains healthy balance.",
+      "action": "Continue monitoring"
+    }
+  ]
+}
          */
       }
 

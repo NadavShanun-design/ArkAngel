@@ -1211,6 +1211,56 @@ fn get_company_analytics() -> Result<serde_json::Value, String> {
                         if let Some(screenshots) = usage_data["total_screenshots"].as_u64() {
                             total_screenshots += screenshots;
                             
+                            // Generate per-employee insights
+                            let mut employee_insights = Vec::new();
+                            
+                            if let Some(software_usage) = usage_data["software_usage"].as_object() {
+                                // Check for high social media usage (warning)
+                                if let Some(social_media) = software_usage.get("social_media") {
+                                    if let Some(percentage) = social_media["percentage"].as_f64() {
+                                        if percentage > 20.0 {
+                                            employee_insights.push(serde_json::json!({
+                                                "type": "warning",
+                                                "title": "High Social Media Activity",
+                                                "priority": 2,
+                                                "message": format!("{}% of activity is on social media. Consider time management strategies.", (percentage * 10.0).round() / 10.0),
+                                                "action": "Schedule focused work blocks and use app blockers during deep work sessions"
+                                            }));
+                                        } else if percentage > 15.0 {
+                                            employee_insights.push(serde_json::json!({
+                                                "type": "info",
+                                                "title": "Moderate Social Media Usage",
+                                                "priority": 4,
+                                                "message": format!("{}% of activity is on social media. Monitor and adjust as needed.", (percentage * 10.0).round() / 10.0),
+                                                "action": "Continue monitoring, set boundaries if needed"
+                                            }));
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Check for low activity
+                            if screenshots < 10 && screenshots > 0 {
+                                employee_insights.push(serde_json::json!({
+                                    "type": "info",
+                                    "title": "Lower Activity Level",
+                                    "priority": 4,
+                                    "message": format!("Only {} screenshots recorded. May indicate part-time, PTO, or focused deep work.", screenshots),
+                                    "action": "Check in to ensure everything is on track"
+                                }));
+                            }
+                            
+                            // Check for high activity/productivity
+                            if screenshots >= 30 {
+                                employee_insights.push(serde_json::json!({
+                                    "type": "success",
+                                    "title": "High Productivity",
+                                    "priority": 5,
+                                    "message": format!("Excellent activity level with {} screenshots. Strong engagement.", screenshots),
+                                    "action": "Recognize performance and gather best practices for team"
+                                }));
+                            }
+
                             employee_performance.push(serde_json::json!({
                                 "user_id": emp_id,
                                 "employee_name": emp_name,
@@ -1224,7 +1274,8 @@ fn get_company_analytics() -> Result<serde_json::Value, String> {
                                             .filter(|(_, v)| v["count"].is_number())
                                             .max_by_key(|(_, v)| v["count"].as_u64().unwrap_or(0))
                                             .map(|(k, _)| k.clone())
-                                    })
+                                    }),
+                                "employee_insights": employee_insights
                             }));
                         }
 
