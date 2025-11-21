@@ -51,7 +51,7 @@
  */
 import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { TrendingUp, Users, Activity, AlertCircle, CheckCircle, Info, Target, Clock } from 'lucide-react';
+import { TrendingUp, Users, Activity, AlertCircle, CheckCircle, Info, Target, Clock, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCompanyAnalytics } from '@/lib/supabase';
 import type { CompanyAnalytics } from '@/types/employee';
@@ -119,6 +119,7 @@ export default function CompanyInsights() {
   const [analytics, setAnalytics] = useState<CompanyAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedEmployee, setExpandedEmployee] = useState<string | null>(null);
 
   useEffect(() => {
     loadAnalytics();
@@ -163,84 +164,7 @@ export default function CompanyInsights() {
          * - Aggregates screenshot data from 'screenshots' table filtered by organization_id
          * - Calculates analytics across all employees in the organization
          * - Returns CompanyAnalytics object with real employee performance data
-         * 
-         * - The sample JSON response from Supabase will look like this
-         * 
-         * {
-  "total_employees": 12,
-  "total_screenshots": 2450,
-  "company_category_breakdown": {
-    "development": {
-      "percentage": 65.5,
-      "total_count": 1605,
-      "employee_count": 8
-    },
-    "communication": {
-      "percentage": 20.0,
-      "total_count": 490,
-      "employee_count": 12
-    },
-    "social_media": {
-      "percentage": 5.2,
-      "total_count": 127,
-      "employee_count": 4
-    }
-  },
-  "employee_performance": [
-    {
-      "user_id": "a1b2c3d4-...",
-      "employee_name": "Sarah Jenkins",
-      "employee_email": "sarah.j@company.com",
-      "total_screenshots": 450,
-      "most_used_category": "development",
-      "last_updated": "2025-01-15T14:30:00Z"
-    },
-    {
-      "user_id": "e5f6g7h8-...",
-      "employee_name": "Mike Ross",
-      "employee_email": "m.ross@company.com",
-      "total_screenshots": 380,
-      "most_used_category": "design",
-      "last_updated": "2025-01-15T14:15:00Z"
-    }
-  ],
-  "productivity_trends": [
-    {
-      "date": "2025-01-15",
-      "total_screenshots": 850,
-      "active_employees": 12
-    },
-    {
-      "date": "2025-01-14",
-      "total_screenshots": 790,
-      "active_employees": 11
-    }
-  ],
-  "insights": [
-    {
-      "type": "success",
-      "title": "Top Performers Identified",
-      "priority": 3,
-      "message": "3 employee(s) in top 20% for productivity. Setting excellent standards.",
-      "action": "Recognize achievements and document best practices for team learning"
-    },
-    {
-      "type": "info",
-      "title": "Primary Focus Area",
-      "priority": 4,
-      "message": "Team focuses on development (65.5% of activity). Ensure tools and training are optimized.",
-      "action": "Audit tool availability, schedule team training on advanced features"
-    },
-    {
-      "type": "success",
-      "title": "Healthy Social Media Balance",
-      "priority": 5,
-      "message": "Social media: 5.2% of activity. Team maintains healthy balance.",
-      "action": "Continue monitoring"
-    }
-  ]
-}
-         */
+*/
       }
 
       setAnalytics(data);
@@ -504,43 +428,174 @@ export default function CompanyInsights() {
         </div>
       </div>
 
-      {/* Top Performers */}
+      {/* Top Performers with Individual Insights */}
       {getTopPerformers().length > 0 && (
         <div className="bg-background/50 border border-border rounded-xl p-8">
-          <h2 className="text-2xl font-bold mb-6">Top Performers</h2>
-          <div className="space-y-3">
-            {getTopPerformers().map((employee, index) => (
-              <div
-                key={employee.user_id}
-                className="flex items-center gap-4 p-4 rounded-lg bg-background/80 border border-border hover:border-primary/50 transition-colors"
-              >
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 text-primary font-bold text-sm">
-                  {index + 1}
+          <h2 className="text-2xl font-bold mb-6">Top Performers & Individual Insights</h2>
+          <div className="space-y-4">
+            {getTopPerformers().map((employee, index) => {
+              const isExpanded = expandedEmployee === employee.user_id;
+              const hasInsights = employee.employee_insights && employee.employee_insights.length > 0;
+              
+              return (
+                <div
+                  key={employee.user_id}
+                  className="rounded-lg bg-background/80 border border-border overflow-hidden"
+                >
+                  <button
+                    onClick={() => setExpandedEmployee(isExpanded ? null : employee.user_id)}
+                    className="w-full flex items-center gap-4 p-4 hover:bg-accent/50 transition-colors text-left"
+                  >
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 text-primary font-bold text-sm flex-shrink-0">
+                      {index + 1}
+                    </div>
+                    {employee.employee_avatar && (
+                      <img
+                        src={employee.employee_avatar}
+                        alt={employee.employee_name}
+                        className="w-12 h-12 rounded-full ring-2 ring-border flex-shrink-0"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-lg">{employee.employee_name}</div>
+                      <div className="text-sm text-muted-foreground truncate">{employee.employee_email}</div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="font-bold text-lg">{employee.total_screenshots.toLocaleString()}</div>
+                      <div className="text-xs text-muted-foreground">screenshots</div>
+                    </div>
+                    {employee.most_used_category && (
+                      <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm flex-shrink-0">
+                        {ICONS[employee.most_used_category] || '📄'}
+                        <span className="hidden sm:inline">{employee.most_used_category.replace('_', ' ').toUpperCase()}</span>
+                      </div>
+                    )}
+                    {hasInsights && (
+                      <ChevronDown
+                        className={`w-5 h-5 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
+                      />
+                    )}
+                  </button>
+
+                  {/* Per-Employee Insights Section */}
+                  {isExpanded && hasInsights && (
+                    <div className="border-t border-border bg-background/40 p-4 space-y-3">
+                      {employee.employee_insights.map((insight: any, idx: number) => {
+                        const Icon = INSIGHT_ICONS[insight.type];
+                        return (
+                          <div
+                            key={idx}
+                            className={`rounded-lg border-2 p-4 ${INSIGHT_COLORS[insight.type]}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              {Icon && <Icon className="w-5 h-5 mt-0.5 flex-shrink-0" />}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <div className="font-bold text-sm">{insight.title}</div>
+                                  {insight.priority <= 2 && (
+                                    <span className="text-xs font-bold px-2 py-0.5 bg-current/20 rounded">
+                                      {insight.priority === 1 ? '🔴 URGENT' : '🟠 HIGH'}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-sm leading-relaxed mb-2">{insight.message}</div>
+                                <div className="bg-background/60 rounded p-2 border border-current/10 text-xs">
+                                  <div className="font-semibold opacity-70 mb-1">ACTION:</div>
+                                  <div>{insight.action}</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-                {employee.employee_avatar && (
-                  <img
-                    src={employee.employee_avatar}
-                    alt={employee.employee_name}
-                    className="w-12 h-12 rounded-full ring-2 ring-border"
-                  />
-                )}
-                <div className="flex-1">
-                  <div className="font-semibold text-lg">{employee.employee_name}</div>
-                  <div className="text-sm text-muted-foreground">{employee.employee_email}</div>
-                </div>
-                <div className="text-right">
-                  <div className="font-bold text-lg">{employee.total_screenshots.toLocaleString()}</div>
-                  <div className="text-xs text-muted-foreground">screenshots</div>
-                </div>
-                {employee.most_used_category && (
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">
-                    {ICONS[employee.most_used_category] || '📄'}
-                    <span>{employee.most_used_category.replace('_', ' ').toUpperCase()}</span>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
+          
+          {/* Production Implementation Comment */}
+          {/* 
+            Sample JSON return that works with this-
+
+            {
+  "total_employees": 12,
+  "total_screenshots": 2450,
+  "company_category_breakdown": {
+    "development": {
+      "percentage": 65.5,
+      "total_count": 1605,
+      "employee_count": 8
+    },
+    "communication": {
+      "percentage": 20.0,
+      "total_count": 490,
+      "employee_count": 12
+    },
+    "social_media": {
+      "percentage": 5.2,
+      "total_count": 127,
+      "employee_count": 4
+    }
+  },
+  "employee_performance": [
+    {
+      "user_id": "a1b2c3d4-...",
+      "employee_name": "Sarah Jenkins",
+      "employee_email": "sarah.j@company.com",
+      "total_screenshots": 450,
+      "most_used_category": "development",
+      "last_updated": "2025-01-15T14:30:00Z"
+    },
+    {
+      "user_id": "e5f6g7h8-...",
+      "employee_name": "Mike Ross",
+      "employee_email": "m.ross@company.com",
+      "total_screenshots": 380,
+      "most_used_category": "design",
+      "last_updated": "2025-01-15T14:15:00Z"
+    }
+  ],
+  "productivity_trends": [
+    {
+      "date": "2025-01-15",
+      "total_screenshots": 850,
+      "active_employees": 12
+    },
+    {
+      "date": "2025-01-14",
+      "total_screenshots": 790,
+      "active_employees": 11
+    }
+  ],
+  "insights": [
+    {
+      "type": "success",
+      "title": "Top Performers Identified",
+      "priority": 3,
+      "message": "3 employee(s) in top 20% for productivity. Setting excellent standards.",
+      "action": "Recognize achievements and document best practices for team learning"
+    },
+    {
+      "type": "info",
+      "title": "Primary Focus Area",
+      "priority": 4,
+      "message": "Team focuses on development (65.5% of activity). Ensure tools and training are optimized.",
+      "action": "Audit tool availability, schedule team training on advanced features"
+    },
+    {
+      "type": "success",
+      "title": "Healthy Social Media Balance",
+      "priority": 5,
+      "message": "Social media: 5.2% of activity. Team maintains healthy balance.",
+      "action": "Continue monitoring"
+    }
+  ]
+}
+
+
+          */}
         </div>
       )}
 
