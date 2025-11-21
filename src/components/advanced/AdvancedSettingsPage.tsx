@@ -14,6 +14,7 @@ import { createCheckoutSession, createPortalSession, STRIPE_PRICES, type Subscri
 import { TranscriptViewer } from "@/components/transcripts";
 import { CreatePersonaWizard } from "@/components/training";
 import EmployeesPage from "@/components/employees/EmployeesPage";
+import CompanyInsights from "@/components/employees/CompanyInsights";
 import PerformancePage from "@/components/advanced/PerformancePage";
 import ReactMarkdown from "react-markdown";
 import { convertFileSrc } from "@tauri-apps/api/core";
@@ -31,6 +32,7 @@ type SectionKey =
   | "transcripts"
   | "photos"
   | "employees"
+  | "company-insights"
   | "performance"
   | "training"
   | "manage-data";
@@ -48,6 +50,7 @@ const allSections: { key: SectionKey; label: string; role?: 'employer' | 'employ
   { key: "transcripts", label: "Transcripts" },
   { key: "photos", label: "Photos" },
   { key: "employees", label: "Employees", role: 'employer' },
+  { key: "company-insights", label: "Company Insights", role: 'employer' },
   { key: "performance", label: "Performance", role: 'employee' },
   { key: "training", label: "Training" },
   { key: "manage-data", label: "Manage Data" },
@@ -71,16 +74,87 @@ export const AdvancedSettingsPage: React.FC = () => {
     console.log('[AdvancedSettingsPage] User changed:', user);
   }, [user]);
 
+  /**
+   * ============================================================================
+   * ROLE-BASED SECTION FILTERING - SECURITY ISSUE
+   * ============================================================================
+   * 
+   * CURRENT ISSUE (Line 79-82):
+   * - DEV mode bypass allows viewing role-restricted sections WITHOUT employer/employee role
+   * - Line 82: "if (!user?.role) return isDev" means any user can see all sections in dev mode
+   * - Users without roles can access Employees, Company Insights, Performance pages in dev
+   * - Production will enforce roles, but dev mode has no security
+   * 
+   * RISK:
+   * - Employee can see Company Insights (should only be employer)
+   * - Non-role users can see admin-only features
+   * - No permission verification at page load time
+   * 
+   * SOLUTION - ADD PERMISSION CHECKS AT PAGE LEVEL:
+   * 
+   *   // In CompanyInsights.tsx, EmployeesPage.tsx, PerformancePage.tsx:
+   *   const checkPermission = () => {
+   *     if (import.meta.env.DEV) {
+   *       return true; // Allow in dev for testing
+   *     }
+   *     
+   *     // Production: Enforce role requirements
+   *     const requiredRole: 'employer' | 'employee' | undefined = {
+   *       'company-insights': 'employer',
+   *       'employees': 'employer',
+   *       'performance': 'employee'
+   *     }[pageId];
+   * 
+   *     if (!requiredRole) return true;
+   *     if (!user?.role) return false;
+   *     return user.role === requiredRole;
+   *   };
+   * 
+   *   // Then block rendering if no permission:
+   *   if (!checkPermission()) {
+   *     return (
+   *       <div className="flex items-center justify-center h-full">
+   *         <p>You don't have permission to view this page</p>
+   *       </div>
+   *     );
+   *   }
+   * 
+   * BETTER SOLUTION - Use Authentication Guard (AuthContext):
+   * 
+   *   // In AuthContext.tsx, add permission check method:
+   *   export const usePermission = (requiredRole?: 'employer' | 'employee') => {
+   *     const { user } = useAuth();
+   *     const isDev = import.meta.env.DEV;
+   * 
+   *     if (isDev) return true; // Dev mode allows all
+   *     if (!requiredRole) return true; // No requirement
+   *     if (!user) return false;
+   *     return user.role === requiredRole;
+   *   };
+   * 
+   *   // Usage in components:
+   *   const canView = usePermission('employer');
+   *   if (!canView) return <AccessDenied />;
+   * ============================================================================
+   */
+
   // Filter sections based on user role
   const sections = useMemo(() => {
+    const isDev = import.meta.env.DEV;
     const filtered = allSections.filter(section => {
-      // If section has no role requirement, show it to everyone
       if (!section.role) return true;
+      if (!user?.role) return isDev;
+
+      // this is just temporary dev code to test advancedsettings without logging in. real code below-
+
+      // If section has no role requirement, show it to everyone
+      // if (!section.role) return true;
 
       // If user has no role, hide role-specific sections
-      if (!user?.role) return false;
+      // if (!user?.role) return false;
 
       // Show section only if user's role matches
+
       return section.role === user.role;
     });
     console.log('[AdvancedSettingsPage] Filtered sections:', filtered.length, filtered.map(s => s.key));
@@ -143,8 +217,9 @@ export const AdvancedSettingsPage: React.FC = () => {
             {active === "documents" && <DocumentsSection />}
             {active === "transcripts" && <TranscriptsSection />}
             {active === "photos" && <PhotosSection />}
-            {active === "employees" && user?.role === 'employer' && <EmployeesSection />}
-            {active === "performance" && user?.role === 'employee' && <PerformancePage />}
+            {active === "employees" && <EmployeesSection />}
+            {active === "company-insights" && <CompanyInsights />}
+            {active === "performance" && <PerformancePage />}
             {active === "training" && <TrainingSection />}
             {active === "manage-data" && <ManageDataSection />}
           </div>

@@ -40,3 +40,32 @@ export interface EmployeeUsageData {
 export interface EmployeeList {
   employees: Employee[];
 }
+
+export interface CompanyAnalytics {
+  total_employees: number;
+  total_screenshots: number;
+  company_category_breakdown: Record<string, {
+    total_count: number;
+    percentage: number;
+    employee_count: number;
+  }>;
+  productivity_trends: Array<{
+    date: string;
+    total_screenshots: number;
+    active_employees: number;
+  }>;
+  employee_performance: Array<{
+    user_id: string;
+    employee_name: string;
+    employee_email: string;
+    total_screenshots: number;
+    most_used_category?: string;
+  }>;
+  insights: Array<{
+    type: 'info' | 'warning' | 'success';
+    priority: number;
+    title: string;
+    message: string;
+    action: string;
+  }>;
+}

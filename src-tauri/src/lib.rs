@@ -1,3 +1,111 @@
+/**
+ * ============================================================================
+ * TAURI BACKEND - INFRASTRUCTURE & HARDCODED PATH ISSUES
+ * ============================================================================
+ * 
+ * MAJOR ISSUES:
+ * 
+ * 1. WHISPER BINARY HARDCODED TO MAC ARM64 (Lines 1347-1350):
+ *    - Path: "./binaries/whisper-mac-arm64"
+ *    - Fails on Windows, Linux, Intel Macs
+ *    - No fallback mechanism - transcription completely broken on non-ARM64 Mac
+ *    - Sidecar transcription server (8765) is optional fallback
+ * 
+ * 2. SIDECAR SERVER NOT GUARANTEED (Lines 1384-1389):
+ *    - If port 8765 already in use, skips sidecar startup
+ *    - Silent failure - no error if sidecar fails to build/run
+ *    - App continues without transcription capability
+ *    - No health check or fallback when sidecar dies
+ * 
+ * 3. OLLAMA VLM OPTIONAL BUT NO FEEDBACK (employee_tracker.rs:174):
+ *    - If Ollama not running on localhost:11434, screenshot categorization fails silently
+ *    - Screenshots can't be categorized without Ollama
+ *    - No fallback to keyword-based detection
+ *    - No config option for custom Ollama URL
+ * 
+ * 4. SUPABASE API KEY VALIDATION MISSING:
+ *    - SupabaseClient::new() may fail silently
+ *    - No validation that Supabase URL/API key are configured
+ *    - Failed sync attempts logged but don't block operations
+ * 
+ * SOLUTIONS:
+ * 
+ *   // Fix 1: Make Whisper path configurable (line 1347-1348):
+ *   let binary_path = {
+ *     #[cfg(target_os = "macos")]
+ *     {
+ *       #[cfg(target_arch = "aarch64")]
+ *       { std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("binaries/whisper-mac-arm64") }
+ *       #[cfg(target_arch = "x86_64")]
+ *       { std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("binaries/whisper-mac-x86") }
+ *     }
+ *     #[cfg(target_os = "windows")]
+ *     { std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("binaries/whisper-windows-x64.exe") }
+ *     #[cfg(target_os = "linux")]
+ *     { std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("binaries/whisper-linux-x64") }
+ *   };
+ * 
+ *   let model_path = std::env::var("WHISPER_MODEL_PATH")
+ *     .unwrap_or_else(|_| {
+ *       std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+ *         .join("models/ggml-base.en.bin")
+ *         .to_string_lossy()
+ *         .to_string()
+ *     });
+ * 
+ *   // Fix 2: Add health check for sidecar (around line 1385):
+ *   // Before building sidecar, check if port available AND service might be needed
+ *   let port_check = std::net::TcpListener::bind(("127.0.0.1", 8765));
+ *   match port_check {
+ *     Ok(_) => {
+ *       println!("[sidecar] Port 8765 available, building sidecar...");
+ *       // Build and start sidecar
+ *     }
+ *     Err(_) => {
+ *       println!("[sidecar] Port 8765 in use - assuming sidecar already running");
+ *       // Check if actually running by connecting
+ *       match std::net::TcpStream::connect(("127.0.0.1", 8765)) {
+ *         Ok(_) => println!("[sidecar] Confirmed sidecar is running"),
+ *         Err(_) => eprintln!("[sidecar] WARNING: Port in use but sidecar not responding!"),
+ *       }
+ *     }
+ *   }
+ * 
+ *   // Fix 3: Configurable Ollama URL (employee_tracker.rs:174):
+ *   let ollama_url = std::env::var("OLLAMA_URL")
+ *     .unwrap_or_else(|_| "http://localhost:11434".to_string());
+ * 
+ *   let client = reqwest::Client::new();
+ *   let response = client
+ *     .post(format!("{}/api/generate", ollama_url))
+ *     .json(&request)
+ *     .send()
+ *     .await;
+ * 
+ *   // Fix 4: Add Supabase configuration validation on startup:
+ *   #[tauri::command]
+ *   fn validate_supabase_config() -> Result<bool, String> {
+ *     let url = std::env::var("VITE_SUPABASE_URL").is_ok();
+ *     let key = std::env::var("VITE_SUPABASE_ANON_KEY").is_ok();
+ *     
+ *     if !url || !key {
+ *       Err("Supabase configuration missing".to_string())
+ *     } else {
+ *       Ok(true)
+ *     }
+ *   }
+ * 
+ * ENVIRONMENT VARIABLES TO SET:
+ * 
+ *   # .env.production
+ *   VITE_SUPABASE_URL=https://xxxxx.supabase.co
+ *   VITE_SUPABASE_ANON_KEY=eyxxxx
+ *   OLLAMA_URL=http://localhost:11434  # or remote URL
+ *   WHISPER_MODEL_PATH=/models/ggml-base.en.bin
+ *   TRANSCRIPTION_PROVIDER=local  # or 'openai', 'supabase'
+ * ============================================================================
+ */
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod window;
 mod google_oauth;
@@ -972,10 +1080,23 @@ async fn update_supabase_analytics(user_id: String) -> Result<(), String> {
 #[tauri::command]
 fn get_employees() -> Result<serde_json::Value, String> {
     use std::fs;
+    use std::path::Path;
 
-    let employees_index_path = "employees/index.json";
-    let content = fs::read_to_string(employees_index_path)
-        .map_err(|e| format!("Failed to read employees index: {}", e))?;
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let employees_index_path = Path::new(manifest_dir).join("employees").join("index.json");
+    let content = fs::read_to_string(&employees_index_path)
+        .map_err(|e| format!("Failed to read employees index at {:?}: {}", employees_index_path, e))?;
+
+    //these are adaptive depending on whether we're running locally or in production mode
+    //original code below-
+
+    // fn get_employees() -> Result<serde_json::Value, String> {
+    // use std::fs;
+
+    // let employees_index_path = "employees/index.json";
+    // let content = fs::read_to_string(employees_index_path)
+    //     .map_err(|e| format!("Failed to read employees index: {}", e))?;
+
 
     let employees: serde_json::Value = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse employees index: {}", e))?;
@@ -987,15 +1108,260 @@ fn get_employees() -> Result<serde_json::Value, String> {
 #[tauri::command]
 fn get_employee_usage(employee_id: String) -> Result<serde_json::Value, String> {
     use std::fs;
+    use std::path::Path;
 
-    let usage_path = format!("employees/{}_usage.json", employee_id);
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let usage_path = Path::new(manifest_dir).join("employees").join(format!("{}_usage.json", employee_id));
     let content = fs::read_to_string(&usage_path)
-        .map_err(|e| format!("Failed to read employee usage data: {}", e))?;
+        .map_err(|e| format!("Failed to read employee usage data at {:?}: {}", usage_path, e))?;
 
     let usage_data: serde_json::Value = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse employee usage data: {}", e))?;
 
     Ok(usage_data)
+}
+
+/// Get company-wide analytics by aggregating all employee data
+/// 
+/// DEV MODE: Reads from local JSON files in src-tauri/employees/ directory
+/// 
+/// PRODUCTION MODE:
+/// In production, this function would NOT exist. Instead, the frontend would call:
+/// - supabase.rpc('get_company_analytics', { p_employer_id: employerId })
+/// 
+/// The PostgreSQL RPC function (in Supabase) would:
+/// 1. AUTHENTICATION: Verify request includes valid JWT token for authenticated employer user
+/// 2. AUTHORIZATION: Verify p_employer_id matches user's organization_id (prevent cross-org data leaks)
+/// 3. DATA AGGREGATION:
+///    SELECT 
+///      COUNT(DISTINCT employee_id) as total_src-tauri/employees,
+///      COUNT(*) as total_screenshots,
+///      software_category,
+///      SUM(duration) as category_duration,
+///      COUNT(DISTINCT employee_id) FILTER (WHERE software_category = category) as src-tauri/employees_using_category
+///    FROM screenshots
+///    WHERE organization_id = p_employer_id
+///    GROUP BY software_category
+/// 4. RETURN: CompanyAnalytics object with aggregated data from database (not local files)
+#[tauri::command]
+fn get_company_analytics() -> Result<serde_json::Value, String> {
+    use std::fs;
+    use std::collections::HashMap;
+    use std::path::Path;
+    use chrono::Local;
+
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let employees_index_path = Path::new(manifest_dir).join("employees").join("index.json");
+    let index_content = fs::read_to_string(&employees_index_path)
+        .map_err(|e| format!("Failed to read employees index at {:?}: {}", employees_index_path, e))?;
+    
+    let employees_index: serde_json::Value = serde_json::from_str(&index_content)
+        .map_err(|e| format!("Failed to parse employees index: {}", e))?;
+
+    let employees = employees_index["employees"]
+        .as_array()
+        .ok_or("Employees field is not an array")?;
+
+    /* DEV MODE AGGREGATION:
+     * Reading from employees/index.json (static list of 6 mock employees)
+     * 
+     * PRODUCTION MODE WOULD:
+     * Query Supabase to get list of employees from organization:
+     * SELECT id, name, email FROM employees 
+     * WHERE organization_id = $1 AND is_active = true
+     */
+
+    let mut total_employees = 0;
+    let mut total_screenshots = 0;
+    let mut category_breakdown: HashMap<String, serde_json::Value> = HashMap::new();
+    let mut employee_performance: Vec<serde_json::Value> = Vec::new();
+    let mut all_timeline_entries: HashMap<String, (u64, u64)> = HashMap::new();
+
+    for emp in employees {
+        if emp["id"].is_null() {
+            continue;
+        }
+        
+        let emp_id = emp["id"].as_str().unwrap_or("unknown");
+        let emp_name = emp["name"].as_str().unwrap_or("Unknown");
+        let emp_email = emp["email"].as_str().unwrap_or("");
+        let emp_avatar = emp["avatar"].as_str().unwrap_or("https://i.pravatar.cc/150?u=unknown");
+
+        /* DEV MODE: Read from {employee_id}_usage.json
+         * 
+         * PRODUCTION MODE WOULD:
+         * Query real screenshots for this employee from Supabase:
+         * SELECT 
+         *   software_category,
+         *   COUNT(*) as count,
+         *   ARRAY_AGG(DISTINCT DATE(timestamp)) as active_dates,
+         *   MAX(timestamp) as latest_activity
+         * FROM screenshots
+         * WHERE employee_id = $1 AND organization_id = $2
+         * GROUP BY software_category
+         */
+        let usage_path = Path::new(manifest_dir).join("employees").join(format!("{}_usage.json", emp_id));
+        
+        match fs::read_to_string(&usage_path) {
+            Ok(content) => {
+                match serde_json::from_str::<serde_json::Value>(&content) {
+                    Ok(usage_data) => {
+                        total_employees += 1;
+                        
+                        if let Some(screenshots) = usage_data["total_screenshots"].as_u64() {
+                            total_screenshots += screenshots;
+                            
+                            employee_performance.push(serde_json::json!({
+                                "user_id": emp_id,
+                                "employee_name": emp_name,
+                                "employee_email": emp_email,
+                                "employee_avatar": emp_avatar,
+                                "total_screenshots": screenshots,
+                                "most_used_category": usage_data["software_usage"]
+                                    .as_object()
+                                    .and_then(|obj| {
+                                        obj.iter()
+                                            .filter(|(_, v)| v["count"].is_number())
+                                            .max_by_key(|(_, v)| v["count"].as_u64().unwrap_or(0))
+                                            .map(|(k, _)| k.clone())
+                                    })
+                            }));
+                        }
+
+                        if let Some(software_usage) = usage_data["software_usage"].as_object() {
+                            for (category, cat_data) in software_usage {
+                                if let Some(count) = cat_data["count"].as_u64() {
+                                    category_breakdown
+                                        .entry(category.clone())
+                                        .or_insert_with(|| serde_json::json!({
+                                            "total_count": 0,
+                                            "employee_count": 0,
+                                            "percentage": 0.0
+                                        }));
+
+                                    if let Some(entry) = category_breakdown.get_mut(category) {
+                                        if let Some(obj) = entry.as_object_mut() {
+                                            let current = obj["total_count"].as_u64().unwrap_or(0);
+                                            obj["total_count"] = serde_json::json!(current + count);
+                                            
+                                            if count > 0 {
+                                                let emp_count = obj["employee_count"].as_u64().unwrap_or(0);
+                                                obj["employee_count"] = serde_json::json!(emp_count + 1);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if let Some(timeline) = usage_data["timeline"].as_array() {
+                            for entry in timeline {
+                                if let (Some(date), Some(count)) = (entry["date"].as_str(), entry["screenshots"].as_u64()) {
+                                    all_timeline_entries
+                                        .entry(date.to_string())
+                                        .or_insert((0, 0));
+                                    
+                                    if let Some((screenshots, _)) = all_timeline_entries.get_mut(date) {
+                                        *screenshots += count;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to parse usage data for {}: {}", emp_id, e);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to read usage data for {}: {}", emp_id, e);
+            }
+        }
+    }
+
+    let mut productivity_trends: Vec<serde_json::Value> = all_timeline_entries
+        .into_iter()
+        .map(|(date, (screenshots, _))| {
+            serde_json::json!({
+                "date": date,
+                "total_screenshots": screenshots,
+                "active_employees": total_employees as u64
+            })
+        })
+        .collect();
+
+    productivity_trends.sort_by(|a, b| {
+        a["date"].as_str().unwrap_or("").cmp(b["date"].as_str().unwrap_or(""))
+    });
+
+    for entry in category_breakdown.values_mut() {
+        if let Some(obj) = entry.as_object_mut() {
+            let total_count = obj["total_count"].as_u64().unwrap_or(1) as f64;
+            let percentage = if total_screenshots > 0 {
+                (total_count / total_screenshots as f64) * 100.0
+            } else {
+                0.0
+            };
+            obj["percentage"] = serde_json::json!(percentage);
+        }
+    }
+
+    employee_performance.sort_by(|a, b| {
+        let a_screenshots = a["total_screenshots"].as_u64().unwrap_or(0);
+        let b_screenshots = b["total_screenshots"].as_u64().unwrap_or(0);
+        b_screenshots.cmp(&a_screenshots)
+    });
+
+    let insights = vec![
+        serde_json::json!({
+            "type": "success",
+            "priority": 1,
+            "title": "Team Productivity",
+            "message": format!("Your team has captured {} total screenshots across all activities.", total_screenshots),
+            "action": "Monitor productivity trends in the dashboard"
+        }),
+    ];
+
+    /* PRODUCTION MODE RETURN:
+     * This aggregated CompanyAnalytics would be returned from the PostgreSQL RPC function
+     * as a structured JSON response.
+     * 
+     * The Supabase RPC would include:
+     * - SECURITY: Row-level security (RLS) policies would filter data by organization_id
+     * - PERFORMANCE: Materialized views or caching for expensive aggregations
+     * - INSIGHTS: Generate dynamically based on real data (low engagement, high usage, etc.)
+     * 
+     * CREATE OR REPLACE FUNCTION get_company_analytics(p_employer_id UUID)
+     * RETURNS json AS $$
+     * BEGIN
+     *   -- Verify authentication & authorization
+     *   IF auth.uid() IS NULL THEN
+     *     RAISE EXCEPTION 'Not authenticated';
+     *   END IF;
+     *   
+     *   -- Verify employer owns this organization
+     *   IF (SELECT organization_id FROM users WHERE id = auth.uid()) != p_employer_id THEN
+     *     RAISE EXCEPTION 'Unauthorized access';
+     *   END IF;
+     *   
+     *   -- Return aggregated analytics from screenshots table
+     *   RETURN json_build_object(
+     *     'total_employees', (SELECT COUNT(DISTINCT employee_id) FROM screenshots WHERE organization_id = p_employer_id),
+     *     'total_screenshots', (SELECT COUNT(*) FROM screenshots WHERE organization_id = p_employer_id),
+     *     'company_category_breakdown', (SELECT json_object_agg(...)),
+     *     'productivity_trends', (SELECT json_agg(...) FROM ...)
+     *   );
+     * END;
+     * $$ LANGUAGE plpgsql SECURITY DEFINER;
+     */
+    Ok(serde_json::json!({
+        "total_employees": total_employees,
+        "total_screenshots": total_screenshots,
+        "company_category_breakdown": category_breakdown,
+        "productivity_trends": productivity_trends,
+        "employee_performance": employee_performance,
+        "insights": insights
+    }))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -1081,6 +1447,7 @@ pub fn run() {
             get_whisper_paths,
             get_employees,
             get_employee_usage,
+            get_company_analytics,
             sync_screenshot_to_supabase,
             get_supabase_employee_analytics,
             update_supabase_analytics,
@@ -1123,8 +1490,12 @@ pub fn run() {
                     let whisper = whisper_local::WhisperLocal::new(
                         std::path::PathBuf::from("/nonexistent/binary"),
                         std::path::PathBuf::from("/nonexistent/model"),
-                    ).unwrap_or_else(|_| panic!("Failed to create placeholder"));
-                    app.manage(Arc::new(Mutex::new(whisper)));
+                    );
+                    eprintln!("   Whisper placeholder created (will fail at runtime)");
+                    // my machine was panicking locally no matter what, so i have changed the code here. original code below-
+                //     ).unwrap_or_else(|_| panic!("Failed to create placeholder"));
+                //     app.manage(Arc::new(Mutex::new(whisper)));
+                // }
                 }
             }
 
