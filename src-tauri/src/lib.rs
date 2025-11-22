@@ -1261,6 +1261,23 @@ fn get_company_analytics() -> Result<serde_json::Value, String> {
                                 }));
                             }
 
+                            // Check for high browser usage
+                            if let Some(software_usage) = usage_data["software_usage"].as_object() {
+                                if let Some(browsers) = software_usage.get("browsers") {
+                                    if let Some(percentage) = browsers["percentage"].as_f64() {
+                                        if percentage > 25.0 {
+                                            employee_insights.push(serde_json::json!({
+                                                "type": "info",
+                                                "title": "High Browser Activity",
+                                                "priority": 4,
+                                                "message": format!("{}% of activity is in browsers. Ensure proper breaks and eye strain prevention.", (percentage * 10.0).round() / 10.0),
+                                                "action": "Encourage regular screen breaks and check monitor setup ergonomics"
+                                            }));
+                                        }
+                                    }
+                                }
+                            }
+
                             employee_performance.push(serde_json::json!({
                                 "user_id": emp_id,
                                 "employee_name": emp_name,

@@ -201,7 +201,7 @@ export default function CompanyInsights() {
 
   const getTopPerformers = () => {
     if (!analytics || !analytics.employee_performance) return [];
-    return analytics.employee_performance.slice(0, 5);
+    return analytics.employee_performance;
   };
 
   const getEstimatedHours = () => {
@@ -431,7 +431,7 @@ export default function CompanyInsights() {
       {/* Top Performers with Individual Insights */}
       {getTopPerformers().length > 0 && (
         <div className="bg-background/50 border border-border rounded-xl p-8">
-          <h2 className="text-2xl font-bold mb-6">Top Performers & Individual Insights</h2>
+          <h2 className="text-2xl font-bold mb-6">Employees and Insights</h2>
           <div className="space-y-4">
             {getTopPerformers().map((employee, index) => {
               const isExpanded = expandedEmployee === employee.user_id;
