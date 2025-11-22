@@ -257,7 +257,7 @@ export default function CompanyInsights() {
         <div>
           <h1 className="text-3xl font-bold">Company Insights</h1>
           <p className="text-muted-foreground mt-1">
-            Actionable insights for your entire team
+            Company Insights
           </p>
         </div>
         <button
