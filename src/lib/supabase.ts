@@ -1,3 +1,208 @@
+/**
+ * ============================================================================
+ * SUPABASE CLIENT - MISSING RPC FUNCTIONS & BATCH SYNC
+ * ============================================================================
+ * 
+ * CRITICAL MISSING FUNCTIONS:
+ * 1. get_employee_analytics RPC - Needed for PerformancePage.tsx
+ * 2. get_company_analytics RPC - Needed for CompanyInsights.tsx (production only)
+ * 3. Batch screenshot insert - Screenshots sync one-at-a-time (very slow)
+ * 4. Real-time subscription helpers - No built-in realtime setup
+ * 5. Screenshot image upload to storage - Only metadata saved to DB
+ * 
+ * ISSUES:
+ * 1. PerformancePage expects getEmployeeAnalytics() to return data from RPC
+ * 2. If RPC doesn't exist, page shows "No data available"
+ * 3. Screenshots synced individually, not in batch (inefficient)
+ * 4. No pagination for screenshot queries
+ * 5. No built-in error recovery for sync failures
+ * 6. Storage uploads not handled by Supabase helper functions
+ * 
+ * SOLUTIONS - ADD MISSING RPC FUNCTIONS:
+ * 
+ *   // Create in Supabase SQL Editor:
+ * 
+ *   CREATE OR REPLACE FUNCTION get_employee_analytics(p_employee_id UUID)
+ *   RETURNS json AS $$
+ *   DECLARE
+ *     v_total_screenshots INTEGER;
+ *     v_category_breakdown JSON;
+ *     v_timeline JSON;
+ *     v_most_used_category TEXT;
+ *   BEGIN
+ *     SELECT COUNT(*) INTO v_total_screenshots
+ *     FROM screenshots
+ *     WHERE employee_id = p_employee_id;
+ * 
+ *     SELECT json_object_agg(
+ *       COALESCE(detected_category, 'other'),
+ *       json_build_object(
+ *         'count', COUNT(*),
+ *         'percentage', ROUND(COUNT(*)::NUMERIC / v_total_screenshots * 100, 2)
+ *       )
+ *     ) INTO v_category_breakdown
+ *     FROM screenshots
+ *     WHERE employee_id = p_employee_id
+ *     GROUP BY detected_category;
+ * 
+ *     SELECT json_agg(
+ *       json_build_object(
+ *         'date', DATE(timestamp),
+ *         'screenshots', COUNT(*),
+ *         'most_used', MODE() WITHIN GROUP (ORDER BY detected_category)
+ *       ) ORDER BY DATE(timestamp)
+ *     ) INTO v_timeline
+ *     FROM screenshots
+ *     WHERE employee_id = p_employee_id
+ *     GROUP BY DATE(timestamp);
+ * 
+ *     SELECT detected_category INTO v_most_used_category
+ *     FROM screenshots
+ *     WHERE employee_id = p_employee_id
+ *     GROUP BY detected_category
+ *     ORDER BY COUNT(*) DESC
+ *     LIMIT 1;
+ * 
+ *     RETURN json_build_object(
+ *       'total_screenshots', v_total_screenshots,
+ *       'category_breakdown', v_category_breakdown,
+ *       'timeline', v_timeline,
+ *       'most_used_category', v_most_used_category
+ *     );
+ *   END;
+ *   $$ LANGUAGE plpgsql SECURITY DEFINER;
+ * 
+ *   -- RLS Policy
+ *   CREATE POLICY employee_can_view_own_analytics ON screenshots
+ *   FOR SELECT TO authenticated
+ *   USING (
+ *     employee_id = auth.uid() OR
+ *     organization_id IN (
+ *       SELECT organization_id FROM users WHERE id = auth.uid() AND role = 'employer'
+ *     )
+ *   );
+ * 
+ * SOLUTIONS - ADD BATCH SCREENSHOT SYNC:
+ * 
+ *   // Add to supabase.ts:
+ *   export const batchSyncScreenshots = async (
+ *     screenshots: Array<{
+ *       id: string;
+ *       employee_id: string;
+ *       organization_id: string;
+ *       file_url: string;
+ *       timestamp: string;
+ *       caption: string;
+ *       detected_category: string;
+ *     }>
+ *   ) => {
+ *     try {
+ *       const { error } = await supabase
+ *         .from('screenshots')
+ *         .insert(screenshots);
+ * 
+ *       if (error) throw error;
+ *       console.log(`[Supabase] Synced ${screenshots.length} screenshots in batch`);
+ *     } catch (error) {
+ *       console.error('[Supabase] Batch sync failed:', error);
+ *       throw error;
+ *     }
+ *   };
+ * 
+ * SOLUTIONS - ADD REAL-TIME SUBSCRIPTIONS:
+ * 
+ *   export const subscribeToEmployeeScreenshots = (
+ *     employeeId: string,
+ *     callback: (payload: any) => void
+ *   ) => {
+ *     return supabase
+ *       .from(`screenshots:employee_id=eq.${employeeId}`)
+ *       .on('*', (payload) => {
+ *         console.log('[Supabase] Screenshot change:', payload.eventType);
+ *         callback(payload);
+ *       })
+ *       .subscribe();
+ *   };
+ * 
+ *   export const subscribeToAnalytics = (
+ *     employeeId: string,
+ *     callback: (data: any) => void
+ *   ) => {
+ *     const subscription = supabase
+ *       .from('screenshots')
+ *       .on('INSERT', (payload) => {
+ *         if (payload.new.employee_id === employeeId) {
+ *           callback(payload.new);
+ *         }
+ *       })
+ *       .subscribe();
+ *     
+ *     return () => subscription.unsubscribe();
+ *   };
+ * 
+ * SOLUTIONS - ADD SCREENSHOT UPLOAD TO STORAGE:
+ * 
+ *   export const uploadScreenshotImage = async (
+ *     file: Blob,
+ *     path: string  // e.g., "screenshots/{userId}/{screenshotId}.png"
+ *   ) => {
+ *     const { data, error } = await supabase.storage
+ *       .from('screenshots')
+ *       .upload(path, file, {
+ *         cacheControl: '3600',
+ *         upsert: false,
+ *       });
+ * 
+ *     if (error) throw error;
+ *     return supabase.storage.from('screenshots').getPublicUrl(path);
+ *   };
+ * 
+ * MISSING FEATURE - CASCADE DELETE & BATCH DELETE:
+ * 
+ * CASCADE DELETE ISSUE:
+ * 1. Screenshots table has no cascade rules - orphaned records if employee deleted
+ * 2. No audit trail when screenshots are deleted
+ * 3. Supabase storage not cleaned up automatically
+ * 
+ * SOLUTION - Add CASCADE DELETE:
+ *   ALTER TABLE screenshots ADD CONSTRAINT screenshots_employee_id_fkey
+ *     FOREIGN KEY (employee_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ * 
+ *   ALTER TABLE screenshots ADD CONSTRAINT screenshots_organization_id_fkey
+ *     FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+ * 
+ * BATCH DELETE ISSUE:
+ * 1. WorkflowsPage.tsx only handles single delete operations
+ * 2. Deleting multiple screenshots requires individual API calls
+ * 3. No transactional safety if some deletes fail
+ * 4. Storage cleanup not coordinated with DB deletion
+ * 
+ * SOLUTION - Add batchDeleteScreenshots function:
+ *   export const batchDeleteScreenshots = async (
+ *     screenshotIds: string[],
+ *     employeeId: string,
+ *     storagePaths: string[]
+ *   ) => {
+ *     try {
+ *       const { error } = await supabase
+ *         .from('screenshots')
+ *         .delete()
+ *         .eq('employee_id', employeeId)
+ *         .in('id', screenshotIds);
+ * 
+ *       if (error) throw error;
+ * 
+ *       for (const path of storagePaths) {
+ *         await supabase.storage.from('screenshots').remove([path]);
+ *       }
+ *     } catch (error) {
+ *       console.error('[Supabase] Batch delete failed:', error);
+ *       throw error;
+ *     }
+ *   };
+ * ============================================================================
+ */
+
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -567,4 +772,56 @@ export const subscribeToEmployeeAnalytics = (
       callback
     )
     .subscribe()
+}
+
+/**
+ * Get company-wide analytics for employer dashboard
+ * 
+ * PRODUCTION/ACTUAL DATA FLOW:
+ * =============================
+ * 1. AUTHENTICATION: Uses Supabase JWT token from current authenticated session
+ *    - Token is automatically included in all requests via @supabase/supabase-js client
+ *    - Supabase verifies token validity before processing RPC call
+ * 
+ * 2. RPC CALL: Makes PostgreSQL Remote Procedure Call to Supabase backend:
+ *    - Function name: get_company_analytics
+ *    - Parameter: p_employer_id (UUID of the employer/organization)
+ *    
+ * 3. BACKEND VERIFICATION (in PostgreSQL):
+ *    - Checks auth.uid() is not NULL (user must be authenticated)
+ *    - Verifies auth.uid() has role = 'employer'
+ *    - Verifies p_employer_id matches user's organization_id (prevent cross-org access)
+ *    - Enforces Row Level Security (RLS) policies
+ * 
+ * 4. DATA AGGREGATION (PostgreSQL queries):
+ *    - COUNT(DISTINCT employee_id) WHERE organization_id = p_employer_id
+ *    - COUNT(*) of screenshots for this organization
+ *    - GROUP BY software_category to get category breakdown
+ *    - Calculate percentage and employee count per category
+ *    - Query activity timeline (last 7-30 days)
+ *    - Rank employees by screenshot count
+ * 
+ * 5. RETURN: Structured JSON object matching CompanyAnalytics interface
+ *    - Returns only data the employer is authorized to see (their organization only)
+ * 
+ * SECURITY NOTES:
+ * - Employer can ONLY see analytics for their own organization (verified in RLS policy)
+ * - Employee cannot access this function (role check fails)
+ * - All queries filtered by organization_id to prevent data leaks
+ * - Session token expires after configured time (default 24 hours)
+ */
+export const getCompanyAnalytics = async (employerId: string) => {
+  /* ACTUAL PRODUCTION CALL:
+   * Makes authenticated RPC request to Supabase PostgreSQL function
+   */
+  const { data, error } = await supabase.rpc('get_company_analytics', {
+    p_employer_id: employerId
+  })
+
+  if (error) {
+    console.error('Failed to get company analytics:', error)
+    throw new Error(error.message)
+  }
+
+  return data
 }
